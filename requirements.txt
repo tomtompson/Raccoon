@@ -1,0 +1,14 @@
+torch 
+transformers 
+langchain 
+sentence-transformers 
+tqdm 
+openpyxl 
+pandas
+datasets 
+langchain-community 
+langchain-core
+voyager
+ragatouille 
+pypdf
+docx2txt
