@@ -1,5 +1,5 @@
-from dataloader.FixedDocumentLoader import FixedDocumentLoader as DocumentLoader
-from dataloader.utils import save_langchain_documents, load_langchain_documents
+from crimsonvector.dataloader.FixedDocumentLoader import FixedDocumentLoader as DocumentLoader
+from crimsonvector.dataloader.utils import save_langchain_documents, load_langchain_documents
 
 def main():
     loader = DocumentLoader(
