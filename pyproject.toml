@@ -1,7 +1,7 @@
 [project]
 name = "crimsonvector"
 version = "0.1.0"
-description = "Add your description here"
+description = "Benchmark utilities for RAG experiment"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 dependencies = [
@@ -15,8 +15,13 @@ dependencies = [
     "pypdf>=5.9.0",
     "ragatouille>=0.0.9.post2",
     "sentence-transformers>=5.3.0",
+    "sqlalchemy>=2.0.48",
     "torch>=2.10.0",
     "tqdm>=4.67.3",
     "transformers>=5.3.0",
     "voyager>=2.1.0",
 ]
+
+[[tool.setuptools.packages.find]]
+include = ["crimsonvector*"]
+exclude = ["data*", "test*"]

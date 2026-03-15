@@ -12,3 +12,4 @@ voyager
 ragatouille 
 pypdf
 docx2txt
+sqlalchemy

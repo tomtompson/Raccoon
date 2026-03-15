@@ -3,7 +3,7 @@ from crimsonvector.dataloader.utils import save_langchain_documents, load_langch
 
 def main():
     loader = DocumentLoader(
-    path="Data folder/",
+    path="data/processed",
     chunk_size=2000,
     chunk_overlap=200,)
 
