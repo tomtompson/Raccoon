@@ -1,16 +1,23 @@
-from crimsonvector.dataloader.FixedDocumentLoader import FixedDocumentLoader as DocumentLoader
-from crimsonvector.dataloader.utils import save_langchain_documents, load_langchain_documents
+from pathlib import Path
 
-def main():
-    loader = DocumentLoader(
-    path="data/processed",
-    chunk_size=2000,
-    chunk_overlap=200,)
+from crimsonvector.dataloader.FixedDocumentLoader import FixedDocumentLoader
+from crimsonvector.dataloader.utils import save_langchain_documents
 
-    docs_processed = loader.get_data()
 
-    save_langchain_documents(docs_processed, "documents/output.jsonl")
+SOURCE_PATH = Path("data/raw")
+OUTPUT_PATH = Path("data/processed/documents.jsonl")
 
+
+def main() -> None:
+    loader = FixedDocumentLoader(
+        path=SOURCE_PATH,
+        chunk_size=2000,
+        chunk_overlap=200,
+    )
+    documents = loader.get_data()
+    save_langchain_documents(documents, OUTPUT_PATH)
+
+    print(f"Saved {len(documents)} processed documents to {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
