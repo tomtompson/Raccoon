@@ -9,7 +9,7 @@ from crimsonvector.synthesizer import OllamaSynthesizer
 INPUT_PATH = Path("data/processed/documents.jsonl")
 OUTPUT_PATH = Path("data/processed/generated_qa.jsonl")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-MODEL_ID = os.getenv("OLLAMA_MODEL", "llama3")
+MODEL_ID = os.getenv("OLLAMA_MODEL", "gemma3:27b")
 
 
 def main() -> None:

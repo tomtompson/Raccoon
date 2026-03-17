@@ -31,8 +31,11 @@ Answer:::
 """.strip(),
 "relevance": """
 You will be given a question.
-Your task is to provide a 'total rating' representing how useful this question can be to machine learning developers building NLP applications with the Hugging Face ecosystem.
-Give your answer on a scale of 1 to 5, where 1 means that the question is not useful at all, and 5 means that the question is extremely useful.
+Your task is to provide a 'total rating' representing how useful, meaningful, and practically answerable this question is for a general technical knowledge base or documentation context.
+The source data may be unclear, mixed, or not tied to a specific platform, vendor, or product, so do not assume any particular ecosystem.
+Give your answer on a scale of 1 to 5, where 1 means that the question is vague, trivial, or not useful, and 5 means that the question is clear, substantive, and broadly useful.
+Prefer higher ratings for questions that express a concrete technical need, concept, behavior, workflow, constraint, or decision point.
+Prefer lower ratings for questions that are ambiguous, overly narrow without context, repetitive, or unlikely to help a typical user understand or use the underlying material.
 
 Provide your answer as follows:
 
