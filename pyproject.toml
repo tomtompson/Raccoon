@@ -7,6 +7,7 @@ requires-python = ">=3.10,<3.13"
 dependencies = [
     "datasets>=4.7.0",
     "docx2txt>=0.9",
+    "elasticsearch<9",
     "langchain>=1.2.12",
     "langchain-community>=0.4.1",
     "langchain-core>=1.2.19",
@@ -16,6 +17,7 @@ dependencies = [
     "ragatouille>=0.0.9.post2",
     "sentence-transformers>=5.3.0",
     "sqlalchemy>=2.0.48",
+    "testcontainers>=4.14.2",
     "torch>=2.10.0",
     "tqdm>=4.67.3",
     "transformers>=5.3.0",

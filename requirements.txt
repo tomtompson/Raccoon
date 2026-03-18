@@ -1,6 +1,7 @@
 torch 
 transformers 
 langchain 
+elasticsearch<9
 sentence-transformers 
 tqdm 
 openpyxl 
@@ -13,3 +14,4 @@ ragatouille
 pypdf
 docx2txt
 sqlalchemy
+testcontainers
