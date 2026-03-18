@@ -3,8 +3,16 @@ from __future__ import annotations
 import copy
 import json
 import re
+from statistics import mean
+from time import perf_counter
 from typing import Any
 from urllib import error, request
+
+from crimsonvector.analysis.critique_report import (
+    DEFAULT_THRESHOLDS,
+    normalize_critique_row,
+    summarize_rows,
+)
 
 from .BaseCritiquer import BaseCritiquer
 
@@ -12,8 +20,11 @@ from .BaseCritiquer import BaseCritiquer
 DEFAULT_PROMPTS = {
     "groundedness": """
 You will be given a context and a question.
-Your task is to provide a 'total rating' scoring how well one can answer the given question unambiguously with the given context.
-Give your answer on a scale of 1 to 5, where 1 means that the question is not answerable at all given the context, and 5 means that the question is clearly and unambiguously answerable with the context.
+Assume the context is taken from technical documentation, a product knowledge base, developer guides, or other structured reference material.
+Your task is to provide a 'total rating' scoring how well the question can be answered accurately and unambiguously using only the given context.
+Give your answer on a scale of 1 to 5, where 1 means that the question is not answerable from the context, and 5 means that the question is directly, clearly, and unambiguously answerable from the context.
+Prefer higher ratings when the context explicitly defines the concept, behavior, procedure, requirement, limitation, or configuration asked about.
+Prefer lower ratings when the context is missing key details, only partially addresses the question, or would require outside assumptions.
 
 Provide your answer as follows:
 
@@ -31,11 +42,19 @@ Answer:::
 """.strip(),
 "relevance": """
 You will be given a question.
-Your task is to provide a 'total rating' representing how useful, meaningful, and practically answerable this question is for a general technical knowledge base or documentation context.
-The source data may be unclear, mixed, or not tied to a specific platform, vendor, or product, so do not assume any particular ecosystem.
-Give your answer on a scale of 1 to 5, where 1 means that the question is vague, trivial, or not useful, and 5 means that the question is clear, substantive, and broadly useful.
-Prefer higher ratings for questions that express a concrete technical need, concept, behavior, workflow, constraint, or decision point.
-Prefer lower ratings for questions that are ambiguous, overly narrow without context, repetitive, or unlikely to help a typical user understand or use the underlying material.
+Assume the question is intended for a tightly related technical corpus, such as a single product's documentation set, a coherent project knowledge base, or a small family of related documents used in a RAG/IR system.
+Your task is to provide a 'total rating' representing how useful this question is as a retrieval target within that corpus.
+Give your answer on a scale of 1 to 5, where 1 means that the question is vague, trivial, presentation-dependent, or not useful for retrieval in the corpus, and 5 means that the question is clear, meaningful, and useful for retrieving important information from the corpus.
+Prefer higher ratings for questions that capture a meaningful concept, mechanism, component, threshold, formula, behavior, definition, or relationship that someone working with this corpus would plausibly search for.
+Do NOT lower the rating merely because the question uses corpus-specific terminology, product names, acronyms, or specialized domain concepts.
+Prefer lower ratings for questions that are mostly biographical trivia, historical side facts, local figure-label lookups, wording tied to a specific presentation artifact, repetitive, speculative, or otherwise unlikely to help retrieve useful corpus knowledge.
+
+Use this rubric:
+- 5 = strong retrieval question for this corpus; clear, meaningful, and likely useful.
+- 4 = good retrieval question; somewhat narrow but still useful.
+- 3 = answerable and somewhat useful, but niche or weakly important.
+- 2 = low-value retrieval target; mostly trivia or too tied to local presentation.
+- 1 = vague, malformed, context-dependent, or not useful for corpus retrieval.
 
 Provide your answer as follows:
 
@@ -52,10 +71,12 @@ Answer:::
 """.strip(),
 "standalone": """
 You will be given a question.
-Your task is to provide a 'total rating' representing how context-independent this question is.
-Give your answer on a scale of 1 to 5, where 1 means that the question depends on additional information to be understood, and 5 means that the question makes sense by itself.
-For instance, if the question refers to a particular setting, like 'in the context' or 'in the document', the rating must be 1.
-The questions can contain obscure technical nouns or acronyms like Gradio, Hub, Hugging Face or Space and still be a 5: it must simply be clear to an operator with access to documentation what the question is about.
+Assume the question is meant to be stored, searched, or answered within technical documentation or a product knowledge base.
+Your task is to provide a 'total rating' representing how understandable and self-contained this question is without extra surrounding context.
+Give your answer on a scale of 1 to 5, where 1 means that the question depends on missing context to be understood, and 5 means that the question is clear and meaningful on its own.
+Focus only on context dependence. Do NOT lower the rating merely because the question contains specialized technical terms, product names, formulas, acronyms, or corpus-specific language.
+If the question refers to a particular setting or local presentation artifact, such as 'in the context', 'in the document', 'according to the passage', 'in the diagram', 'in the figure', or similar wording, the rating must be 1.
+The question may contain technical nouns, domain-specific terms, acronyms, class names, API names, or product features and still deserve a 5, as long as a reader of technical documentation can understand what is being asked without needing prior conversational context.
 
 For instance, "What is the name of the checkpoint from which the ViT model is imported?" should receive a 1, since there is an implicit mention of a context, thus the question is not independent from the context.
 
@@ -136,43 +157,96 @@ class OllamaCritiquer(BaseCritiquer):
     def critique(self, outputs: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
         critique_inputs = outputs or self.outputs or getattr(self.sythesizer, "results", [])
         results: list[dict[str, Any]] = []
+        criterion_durations: dict[str, list[float]] = {
+            "groundedness": [],
+            "relevance": [],
+            "standalone": [],
+        }
+        run_started_at = perf_counter()
 
         for output in critique_inputs:
             result = copy.deepcopy(output)
-            evaluations = {
-                "groundedness": self.call_llm(
-                    self.prompts["groundedness"].format(
-                        context=self._resolve_context(result),
-                        question=result["question"],
-                    )
-                ),
-                "relevance": self.call_llm(
-                    self.prompts["relevance"].format(question=result["question"])
-                ),
-                "standalone": self.call_llm(
-                    self.prompts["standalone"].format(question=result["question"])
-                ),
-            }
+            evaluations: dict[str, str] = {}
+
+            groundedness_started_at = perf_counter()
+            evaluations["groundedness"] = self.call_llm(
+                self.prompts["groundedness"].format(
+                    context=self._resolve_context(result),
+                    question=result["question"],
+                )
+            )
+            criterion_durations["groundedness"].append(perf_counter() - groundedness_started_at)
+
+            relevance_started_at = perf_counter()
+            evaluations["relevance"] = self.call_llm(
+                self.prompts["relevance"].format(question=result["question"])
+            )
+            criterion_durations["relevance"].append(perf_counter() - relevance_started_at)
+
+            standalone_started_at = perf_counter()
+            evaluations["standalone"] = self.call_llm(
+                self.prompts["standalone"].format(question=result["question"])
+            )
+            criterion_durations["standalone"].append(perf_counter() - standalone_started_at)
 
             for criterion, evaluation in evaluations.items():
                 score, rationale = self._parse_evaluation(evaluation)
                 result[f"{criterion}_score"] = score
                 result[f"{criterion}_eval"] = rationale
 
-            results.append(result)
+            normalized_result = normalize_critique_row(result, DEFAULT_THRESHOLDS)
+            normalized_result["critique_elapsed_seconds"] = round(
+                sum(criterion_durations[criterion][-1] for criterion in criterion_durations),
+                4,
+            )
+            results.append(normalized_result)
 
         self.results = results
-        self.metrics = {"generated": len(results)}
+        total_elapsed = perf_counter() - run_started_at
+        summary = summarize_rows(results)
+        llm_call_durations = [
+            duration
+            for durations in criterion_durations.values()
+            for duration in durations
+        ]
+        self.metrics = {
+            "generated": len(results),
+            "total_rows": summary.total_rows,
+            "review_required": summary.review_required,
+            "average_total_score": summary.average_total_score,
+            "median_total_score": summary.median_total_score,
+            "score_distributions": summary.score_distributions,
+            "low_groundedness": sum(1 for row in results if row["low_groundedness"]),
+            "low_relevance": sum(1 for row in results if row["low_relevance"]),
+            "low_standalone": sum(1 for row in results if row["low_standalone"]),
+            "context_dependent": sum(1 for row in results if row["context_dependent"]),
+            "likely_trivia": sum(1 for row in results if row["likely_trivia"]),
+            "llm_call_count": len(llm_call_durations),
+            "criterion_call_count": {criterion: len(durations) for criterion, durations in criterion_durations.items()},
+            "criterion_elapsed_seconds": {
+                criterion: round(sum(durations), 4) for criterion, durations in criterion_durations.items()
+            },
+            "criterion_average_elapsed_seconds": {
+                criterion: round(mean(durations), 4) if durations else 0.0
+                for criterion, durations in criterion_durations.items()
+            },
+            "llm_total_elapsed_seconds": round(sum(llm_call_durations), 4),
+            "llm_average_elapsed_seconds": round(mean(llm_call_durations), 4) if llm_call_durations else 0.0,
+            "elapsed_seconds": round(total_elapsed, 4),
+            "average_elapsed_seconds_per_row": round(total_elapsed / len(results), 4) if results else 0.0,
+            "thresholds": dict(DEFAULT_THRESHOLDS),
+            "model_id": self.model_id,
+        }
         return results
-
+    
     def filter(
         self,
         min_groundedness: int = 4,
-        min_relevance: int = 4,
+        min_relevance: int = 3,
         min_standalone: int = 4,
-        outputs: list[dict[str, Any]] | None = None,
+        results: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
-        critique_outputs = outputs or self.results
+        critique_outputs = results or self.results
         filtered = [
             output
             for output in critique_outputs
@@ -184,11 +258,15 @@ class OllamaCritiquer(BaseCritiquer):
         self.metrics.update(
             {
                 "filtered": len(filtered),
+                "filtered_out": len(critique_outputs) - len(filtered),
+                "passed_filter_rate": round(len(filtered) / len(critique_outputs), 4) if critique_outputs else 0.0,
                 "min_groundedness": min_groundedness,
                 "min_relevance": min_relevance,
                 "min_standalone": min_standalone,
             }
         )
+
+        self.results = filtered
         return filtered
 
     def _resolve_context(self, output: dict[str, Any]) -> str:

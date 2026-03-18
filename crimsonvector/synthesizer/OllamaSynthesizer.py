@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from statistics import mean
+from time import perf_counter
 from typing import Any
 from urllib import error, request
 
@@ -70,7 +72,6 @@ class OllamaSynthesizer(BaseSynthesizer):
         try:
             with request.urlopen(req, timeout=self.timeout) as response:
                 response_body = response.read().decode("utf-8")
-                print(response_body)
         except error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"Ollama request failed with status {exc.code}: {detail}") from exc
@@ -84,11 +85,16 @@ class OllamaSynthesizer(BaseSynthesizer):
 
     def synthesize(self) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
+        document_count = len(self.documents or [])
+        llm_call_durations: list[float] = []
+        run_started_at = perf_counter()
 
-        for document in self.documents:
+        for document in self.documents or []:
+            call_started_at = perf_counter()
             generated = self.call_llm(document.page_content)
+            call_elapsed = perf_counter() - call_started_at
+            llm_call_durations.append(call_elapsed)
             generated_text = generated.get("response", "")
-            print(generated_text)
             qa_pair = self._parse_generated_response(generated_text)
 
             results.append(
@@ -98,23 +104,35 @@ class OllamaSynthesizer(BaseSynthesizer):
                     "question": qa_pair["question"],
                     "answer": qa_pair["answer"],
                     "metadata": document.metadata,
+                    "synthesis_elapsed_seconds": round(call_elapsed, 4),
                 }
             )
 
         self.results = results
+        total_elapsed = perf_counter() - run_started_at
+        self.metrics = {
+            "documents_total": document_count,
+            "generated": len(results),
+            "questions_generated": len(results),
+            "answers_generated": len(results),
+            "llm_call_count": len(llm_call_durations),
+            "llm_total_elapsed_seconds": round(sum(llm_call_durations), 4),
+            "llm_average_elapsed_seconds": round(mean(llm_call_durations), 4) if llm_call_durations else 0.0,
+            "elapsed_seconds": round(total_elapsed, 4),
+            "average_elapsed_seconds_per_document": round(total_elapsed / document_count, 4) if document_count else 0.0,
+            "model_id": self.model_id,
+        }
         return results
 
-    def sythesize(self) -> list[dict[str, Any]]:
-        return self.synthesize()
-
     def _parse_generated_response(self, generated_text: str) -> dict[str, str]:
+        if "Factoid question: " not in generated_text or "Answer: " not in generated_text:
+            raise RuntimeError("Generated Ollama response was not valid to extract")
+
         try:
-            question = generated_text.split("Factoid question: ")[-1].split("Answer: ")[0]
-            answer = generated_text.split("Answer: ")[-1]
-        except:
-            raise RuntimeError(
-                "Generated Ollama response was not valid to extract"
-            )
+            question = generated_text.split("Factoid question: ", 1)[1].split("Answer: ", 1)[0].strip()
+            answer = generated_text.split("Answer: ", 1)[1].strip()
+        except Exception as exc:
+            raise RuntimeError("Generated Ollama response was not valid to extract") from exc
 
         if not question or not answer:
             raise RuntimeError("Generated Ollama response is missing question or answer.")
