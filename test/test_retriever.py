@@ -2,39 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import torch
-from langchain_core.documents import Document
-
-from crimsonvector.retriever import (
-    BM25Retriever,
-    LocalEmbeddingRetriever,
-    OllamaEmbeddingRetriever,
-)
-
-
-class StubLocalEmbeddingRetriever(LocalEmbeddingRetriever):
-    def _load_encoder(self):
-        return object()
-
-    def _encode_texts(self, texts: list[str]) -> torch.Tensor:
-        mapping = {
-            "alpha install guide": [1.0, 0.0],
-            "beta troubleshooting notes": [0.0, 1.0],
-            "alpha query": [1.0, 0.0],
-            "beta query": [0.0, 1.0],
-        }
-        vectors = [mapping[text] for text in texts]
-        return torch.tensor(vectors, dtype=torch.float32)
-
-
-class StubOllamaEmbeddingRetriever(OllamaEmbeddingRetriever):
-    def _embed_text(self, text: str) -> list[float]:
-        mapping = {
-            "deployment runbook": [1.0, 0.0],
-            "incident playbook": [0.0, 1.0],
-            "deploy query": [1.0, 0.0],
-        }
-        return mapping[text]
+from crimsonvector.retriever import BM25Retriever
 
 
 class StubBM25Retriever(BM25Retriever):
@@ -88,19 +56,20 @@ class RetrieverTest(unittest.TestCase):
         retriever = StubBM25Retriever(
             elasticsearch_url="http://localhost:9200",
             index_name="unit-test-index",
-            documents=[
-                Document(
-                    page_content="alpha release installation procedure",
-                    metadata={"source": "alpha.txt"},
-                ),
-                Document(
-                    page_content="beta troubleshooting and rollback guide",
-                    metadata={"source": "beta.txt"},
-                ),
-            ]
         )
 
-        retriever.process_documents()
+        retriever.process_documents(
+            [
+                {
+                    "passage": "alpha release installation procedure",
+                    "metadata": {"source": "alpha.txt"},
+                },
+                {
+                    "passage": "beta troubleshooting and rollback guide",
+                    "metadata": {"source": "beta.txt"},
+                },
+            ]
+        )
         result = retriever.search("installation alpha", top_k=2)
 
         self.assertEqual(result["hits"][0]["metadata"]["source"], "alpha.txt")
@@ -114,105 +83,108 @@ class RetrieverTest(unittest.TestCase):
             result["hits"][0]["document_id"],
         )
 
-    def test_preprocess_assigns_document_id(self) -> None:
+    def test_process_documents_assigns_document_id(self) -> None:
         retriever = StubBM25Retriever(
             elasticsearch_url="http://localhost:9200",
             index_name="unit-test-index",
-            documents=[Document(page_content="alpha", metadata={"source": "unit"})]
         )
 
-        processed = retriever.preprocess_documents()
+        processed = retriever.process_documents(
+            [{"passage": "alpha", "metadata": {"source": "unit"}}]
+        )
 
         self.assertEqual(len(processed), 1)
-        self.assertIn("document_id", processed[0].metadata)
-        self.assertEqual(processed[0].metadata["source"], "unit")
+        self.assertEqual(processed[0]["metadata"]["source"], "unit")
+        self.assertIn("document_id", processed[0]["metadata"])
+        self.assertEqual(processed[0]["document_id"], processed[0]["metadata"]["document_id"])
 
-    def test_local_embedding_search_returns_scores(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            retriever = StubLocalEmbeddingRetriever(
-                documents=[
-                    Document(page_content="alpha install guide", metadata={"source": "a"}),
-                    Document(page_content="beta troubleshooting notes", metadata={"source": "b"}),
-                ],
-                model_name="stub-model",
-                query_cache_dir=tmp_dir,
-            )
-
-            retriever.process_documents()
-            result = retriever.search("alpha query", top_k=2)
-
-            self.assertEqual(result["retriever_type"], "local_embedding")
-            self.assertEqual(result["hits"][0]["metadata"]["source"], "a")
-            self.assertAlmostEqual(result["hits"][0]["score"], 1.0, places=5)
-            self.assertEqual(retriever.metrics["embedding_dimension"], 2)
-            self.assertEqual(retriever.metrics["faiss_index_type"], "IndexFlatIP")
-            self.assertEqual(len(list(Path(tmp_dir).glob("*.json"))), 1)
-
-    def test_ollama_embedding_search_uses_local_similarity(self) -> None:
-        retriever = StubOllamaEmbeddingRetriever(
-            ollama_url="http://localhost:11434",
-            model_name="stub-ollama",
-            documents=[
-                Document(page_content="deployment runbook", metadata={"source": "deploy"}),
-                Document(page_content="incident playbook", metadata={"source": "incident"}),
-            ],
+    def test_preprocess_builds_shared_benchmark_payload(self) -> None:
+        retriever = StubBM25Retriever(
+            elasticsearch_url="http://localhost:9200",
+            index_name="unit-test-index",
         )
 
-        retriever.process_documents()
-        result = retriever.search("deploy query", top_k=1)
+        benchmark = retriever.preprocess(
+            [
+                {
+                    "question": "What is alpha?",
+                    "answer": "alpha",
+                    "passage": "alpha is the first item",
+                    "metadata": {"source": "unit"},
+                    "groundedness_score": 5,
+                    "relevance_score": 4,
+                    "standalone_score": 5,
+                    "total_score": 14,
+                }
+            ]
+        )
 
-        self.assertEqual(result["hits"][0]["metadata"]["source"], "deploy")
-        self.assertEqual(retriever.metrics["retriever_type"], "ollama_embedding")
+        self.assertEqual(len(benchmark["documents"]), 1)
+        self.assertEqual(len(benchmark["queries"]), 1)
+        self.assertEqual(len(benchmark["qrels"]), 1)
+        self.assertEqual(benchmark["results"], {})
 
-    def test_batch_search_records_each_query(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            retriever = StubLocalEmbeddingRetriever(
-                documents=[
-                    Document(page_content="alpha install guide", metadata={"source": "a"}),
-                    Document(page_content="beta troubleshooting notes", metadata={"source": "b"}),
-                ],
-                model_name="stub-model",
-                query_cache_dir=tmp_dir,
-            )
-            retriever.process_documents()
+    def test_process_documents_preserves_explicit_ids(self) -> None:
+        retriever = StubBM25Retriever(
+            elasticsearch_url="http://localhost:9200",
+            index_name="unit-test-index",
+        )
 
-            results = retriever.batch_search(["alpha query", "beta query"], top_k=1)
+        retriever.process_documents(
+            [
+                {
+                    "passage": "alpha",
+                    "question": "what is alpha",
+                    "query_id": "query-1",
+                    "metadata": {"source": "unit", "document_id": "doc-1"},
+                }
+            ]
+        )
 
-            self.assertEqual(len(results), 2)
-            self.assertEqual(len(retriever.query_history), 2)
-            self.assertEqual(retriever.query_history[1]["query"], "beta query")
-            self.assertEqual(len(list(Path(tmp_dir).glob("*.json"))), 2)
+        query_payload = next(iter(retriever.benchmark_data["queries"].values()))
+        document_payload = next(iter(retriever.benchmark_data["documents"].values()))
+        self.assertEqual(query_payload["query_id"], "query-1")
+        self.assertEqual(document_payload["document_id"], "doc-1")
 
     def test_save_and_load_round_trip_preserves_searchability(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            cache_dir = Path(tmp_dir) / "query-cache"
-            retriever = StubLocalEmbeddingRetriever(
-                documents=[
-                    Document(page_content="alpha install guide", metadata={"source": "a"}),
-                    Document(page_content="beta troubleshooting notes", metadata={"source": "b"}),
-                ],
-                model_name="stub-model",
-                query_cache_dir=cache_dir,
+            retriever = StubBM25Retriever(
+                elasticsearch_url="http://localhost:9200",
+                index_name="unit-test-index",
             )
-            retriever.process_documents()
-            retriever.search("alpha query", top_k=1)
+            retriever.process_documents(
+                [
+                    {
+                        "passage": "alpha install guide",
+                        "metadata": {"source": "a"},
+                    },
+                    {
+                        "passage": "beta troubleshooting notes",
+                        "metadata": {"source": "b"},
+                    },
+                ]
+            )
+            retriever.search("alpha", top_k=1)
 
             retriever.save(tmp_dir)
-            loaded = StubLocalEmbeddingRetriever(model_name="ignored")
+            loaded = StubBM25Retriever(
+                elasticsearch_url="http://localhost:9200",
+                index_name="ignored",
+            )
             loaded.load(tmp_dir)
-            result = loaded.search("alpha query", top_k=1)
+            loaded.client = StubElasticsearchClient(loaded)
+            loaded._build_index(loaded.processed_documents)
+            result = loaded.search("alpha", top_k=1)
 
         self.assertTrue(loaded.is_ready)
         self.assertEqual(result["hits"][0]["metadata"]["source"], "a")
-        self.assertEqual(loaded.query_history[0]["query"], "alpha query")
-        self.assertEqual(loaded.query_history[1]["query"], "alpha query")
-        self.assertIsNotNone(loaded.query_cache_dir)
+        self.assertEqual(loaded.query_history[0]["query"], "alpha")
+        self.assertEqual(loaded.query_history[1]["query"], "alpha")
 
     def test_search_before_processing_raises(self) -> None:
         retriever = StubBM25Retriever(
             elasticsearch_url="http://localhost:9200",
             index_name="unit-test-index",
-            documents=[Document(page_content="alpha", metadata={})]
         )
 
         with self.assertRaises(RuntimeError):
@@ -222,14 +194,46 @@ class RetrieverTest(unittest.TestCase):
         retriever = StubBM25Retriever(
             elasticsearch_url="http://localhost:9200",
             index_name="unit-test-index",
-            documents=[Document(page_content="alpha beta", metadata={})]
         )
-        retriever.process_documents()
+        retriever.process_documents([{"passage": "alpha beta", "metadata": {}}])
 
         result = retriever.search("alpha", top_k=5)
 
         self.assertEqual(result["returned_count"], 1)
         self.assertEqual(len(result["hits"]), 1)
+
+    def test_bm25_processes_critiquer_rows_without_breaking_generator_flow(self) -> None:
+        retriever = StubBM25Retriever(
+            elasticsearch_url="http://localhost:9200",
+            index_name="unit-test-index",
+        )
+        rows = [
+            {
+                "question": "What chunk overlap is configured?",
+                "answer": "The chunk overlap is 200.",
+                "passage": "The loader uses a chunk overlap of 200.",
+                "metadata": {"source": "unit-test"},
+                "groundedness_score": 5,
+                "relevance_score": 4,
+                "standalone_score": 5,
+                "total_score": 14,
+            }
+        ]
+
+        processed = retriever.process_documents(rows)
+        result = retriever.search("chunk overlap", top_k=1)
+        benchmark = retriever.benchmark_data
+
+        self.assertEqual(len(processed), 1)
+        self.assertEqual(processed[0]["text"], "The loader uses a chunk overlap of 200.")
+        self.assertEqual(len(benchmark["queries"]), 1)
+        query_payload = next(iter(benchmark["queries"].values()))
+        self.assertEqual(query_payload["text"], "What chunk overlap is configured?")
+        self.assertEqual(len(benchmark["qrels"]), 1)
+        self.assertEqual(result["hits"][0]["content"], "The loader uses a chunk overlap of 200.")
+        stored_hit = next(iter(benchmark["results"].values()))["hits"][0]
+        self.assertEqual(stored_hit["content"], "The loader uses a chunk overlap of 200.")
+        self.assertEqual(stored_hit["metadata"]["source"], "unit-test")
 
 
 if __name__ == "__main__":

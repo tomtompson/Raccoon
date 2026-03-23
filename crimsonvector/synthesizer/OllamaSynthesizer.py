@@ -34,7 +34,7 @@ class OllamaSynthesizer(BaseSynthesizer):
         self,
         ollama_url: str,
         model_id: str,
-        documents: list[Document] | None = None,
+        documents: list[Document | dict[str, Any]] | None = None,
         config: dict | None = None,
         prompt: str | None = None,
         timeout: int = 120,
@@ -85,25 +85,25 @@ class OllamaSynthesizer(BaseSynthesizer):
 
     def synthesize(self) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
-        document_count = len(self.documents or [])
+        processed_documents = self.process_documents()
+        document_count = len(processed_documents)
         llm_call_durations: list[float] = []
         run_started_at = perf_counter()
 
-        for document in self.documents or []:
+        for processed_document in processed_documents:
             call_started_at = perf_counter()
-            generated = self.call_llm(document.page_content)
+            generated = self.call_llm(processed_document["passage"])
             call_elapsed = perf_counter() - call_started_at
             llm_call_durations.append(call_elapsed)
             generated_text = generated.get("response", "")
-            qa_pair = self._parse_generated_response(generated_text)
+            qa_pair = self.parse_generated_response(generated_text)
 
             results.append(
                 {
-                    "passage": document.page_content,
+                    **processed_document,
                     "generated": generated_text,
                     "question": qa_pair["question"],
                     "answer": qa_pair["answer"],
-                    "metadata": document.metadata,
                     "synthesis_elapsed_seconds": round(call_elapsed, 4),
                 }
             )
@@ -124,7 +124,7 @@ class OllamaSynthesizer(BaseSynthesizer):
         }
         return results
 
-    def _parse_generated_response(self, generated_text: str) -> dict[str, str]:
+    def parse_generated_response(self, generated_text: str) -> dict[str, str]:
         if "Factoid question: " not in generated_text or "Answer: " not in generated_text:
             raise RuntimeError("Generated Ollama response was not valid to extract")
 

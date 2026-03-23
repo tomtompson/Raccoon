@@ -1,5 +1,5 @@
-import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -10,13 +10,16 @@ if str(PROJECT_ROOT) not in sys.path:
 from testcontainers.elasticsearch import ElasticSearchContainer
 
 from crimsonvector.analysis.critique_report import load_critique_rows
+from crimsonvector.generator import OllamaGenerator
 from crimsonvector.retriever import BM25Retriever
 
 
 INPUT_PATH = Path("data/processed/critique_filter.jsonl")
-OUTPUT_PATH = Path("data/processed/bm25_results.json")
+OUTPUT_PATH = Path("data/processed/generated_answers.json")
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
-TOP_K = 20
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+MODEL_ID = os.getenv("OLLAMA_MODEL", "gemma3:27b")
+TOP_K = 1
 
 
 def main() -> None:
@@ -28,18 +31,30 @@ def main() -> None:
         )
         retriever = BM25Retriever(
             elasticsearch_url=elasticsearch_url,
-            index_name="crimsonvector-bm25-test",
+            index_name="crimsonvector-generator-test",
         )
         retriever.process_documents(rows)
-        retriever.bulk_search(top_k=TOP_K)
+
+        generator = OllamaGenerator(
+            retriever=retriever,
+            ollama_url=OLLAMA_URL,
+            model_id=MODEL_ID,
+            top_k=TOP_K,
+        )
+        results = generator.generate()
+
+    payload = {
+        "results": results,
+        "metrics": generator.metrics,
+    }
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(
-        json.dumps(retriever.benchmark_data, ensure_ascii=False, indent=2),
+        json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
-    print(f"Saved {len(retriever.benchmark_data['results'])} BM25 search results to {OUTPUT_PATH}")
+    print(f"Saved {len(results)} generated answers to {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":

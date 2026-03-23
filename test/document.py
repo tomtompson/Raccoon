@@ -11,7 +11,7 @@ OUTPUT_PATH = Path("data/processed/documents.jsonl")
 def main() -> None:
     loader = FixedDocumentLoader(
         path=SOURCE_PATH,
-        chunk_size=2000,
+        chunk_size=1000,
         chunk_overlap=200,
     )
     documents = loader.get_data()

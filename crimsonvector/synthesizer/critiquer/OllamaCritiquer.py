@@ -103,11 +103,15 @@ class OllamaCritiquer(BaseCritiquer):
         model_id: str,
         outputs: list[dict[str, Any]] | None = None,
         config: dict | None = None,
-        sythesizer=None,
+        synthesizer=None,
         prompts: dict[str, str] | None = None,
         timeout: int = 120,
     ):
-        super().__init__(config=config, sythesizer=sythesizer, model_id=model_id)
+        super().__init__(
+            config=config,
+            synthesizer=synthesizer,
+            model_id=model_id,
+        )
         self.ollama_url = ollama_url.rstrip("/")
         self.timeout = timeout
         self.outputs = outputs or []
@@ -155,7 +159,7 @@ class OllamaCritiquer(BaseCritiquer):
         return str(parsed.get("response", "")).strip()
 
     def critique(self, outputs: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
-        critique_inputs = outputs or self.outputs or getattr(self.sythesizer, "results", [])
+        critique_inputs = self.resolve_critique_inputs(outputs)
         results: list[dict[str, Any]] = []
         criterion_durations: dict[str, list[float]] = {
             "groundedness": [],
@@ -171,7 +175,7 @@ class OllamaCritiquer(BaseCritiquer):
             groundedness_started_at = perf_counter()
             evaluations["groundedness"] = self.call_llm(
                 self.prompts["groundedness"].format(
-                    context=self._resolve_context(result),
+                    context=self.resolve_context(result),
                     question=result["question"],
                 )
             )
@@ -190,7 +194,7 @@ class OllamaCritiquer(BaseCritiquer):
             criterion_durations["standalone"].append(perf_counter() - standalone_started_at)
 
             for criterion, evaluation in evaluations.items():
-                score, rationale = self._parse_evaluation(evaluation)
+                score, rationale = self.parse_evaluation(evaluation)
                 result[f"{criterion}_score"] = score
                 result[f"{criterion}_eval"] = rationale
 
@@ -269,14 +273,43 @@ class OllamaCritiquer(BaseCritiquer):
         self.results = filtered
         return filtered
 
-    def _resolve_context(self, output: dict[str, Any]) -> str:
-        for key in ("context", "passage", "content"):
-            value = output.get(key)
-            if value:
-                return str(value)
-        raise KeyError("Critique input must include one of: context, passage, content.")
+    def resolve_critique_inputs(
+        self,
+        outputs: list[dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]]:
+        if outputs is not None:
+            return outputs
 
-    def _parse_evaluation(self, evaluation: str) -> tuple[int, str]:
+        if self.outputs:
+            return self.outputs
+
+        synthesizer = self.synthesizer
+        if synthesizer is not None:
+            if getattr(synthesizer, "results", None):
+                return list(synthesizer.results)
+
+            processed_documents = list(getattr(synthesizer, "processed_documents", []) or [])
+            if processed_documents and all(
+                row.get("passage") and row.get("question") and row.get("answer")
+                for row in processed_documents
+            ):
+                self.outputs = processed_documents
+                return processed_documents
+
+            if getattr(synthesizer, "documents", None):
+                synthesized_outputs = synthesizer.synthesize()
+                self.outputs = synthesized_outputs
+                return synthesized_outputs
+
+        return []
+
+    def resolve_context(self, output: dict[str, Any]) -> str:
+        passage = output.get("passage")
+        if passage:
+            return str(passage)
+        raise KeyError("Critique input must include a non-empty 'passage'.")
+
+    def parse_evaluation(self, evaluation: str) -> tuple[int, str]:
         rating_match = re.search(r"Total rating:\s*([1-5])\b", evaluation)
         rationale_match = re.search(
             r"Evaluation:\s*(.*?)\s*Total rating:",

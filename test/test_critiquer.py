@@ -1,5 +1,7 @@
 import unittest
 
+from langchain_core.documents import Document
+
 from crimsonvector.synthesizer.critiquer.OllamaCritiquer import OllamaCritiquer
 
 
@@ -20,6 +22,34 @@ class StubCritiquer(OllamaCritiquer):
             return "Answer:::\nEvaluation: This is tied to a local figure label.\nTotal rating: 2"
 
         return "Answer:::\nEvaluation: Fallback.\nTotal rating: 1"
+
+
+class StubSynthesizer:
+    def __init__(self, documents=None, results=None):
+        self.documents = documents
+        self.processed_documents = []
+        self.results = results or []
+
+    def synthesize(self):
+        self.results = [
+            {
+                "question": "What type of cells does a Zeliox unit contain?",
+                "answer": "lithium cells",
+                "passage": self.documents[0].page_content,
+                "metadata": self.documents[0].metadata,
+            }
+        ]
+        return self.results
+
+
+class PreSynthesizedStubSynthesizer:
+    def __init__(self, documents):
+        self.documents = documents
+        self.processed_documents = [dict(document) for document in documents]
+        self.results = []
+
+    def synthesize(self):
+        raise AssertionError("synthesize() should not be called for pre-synthesized rows")
 
 
 class OllamaCritiquerTest(unittest.TestCase):
@@ -70,7 +100,65 @@ class OllamaCritiquerTest(unittest.TestCase):
         )
 
         with self.assertRaises(RuntimeError):
-            critiquer._parse_evaluation("missing fields")
+            critiquer.parse_evaluation("missing fields")
+
+    def test_critique_can_start_from_documents_via_synthesizer(self) -> None:
+        documents = [
+            Document(
+                page_content="A Zeliox unit contains lithium cells.",
+                metadata={"source": "unit"},
+            )
+        ]
+        critiquer = StubCritiquer(
+            ollama_url="http://localhost:11434",
+            model_id="llama3",
+            synthesizer=StubSynthesizer(documents=documents),
+        )
+
+        results = critiquer.critique()
+
+        self.assertEqual(results[0]["question"], "What type of cells does a Zeliox unit contain?")
+        self.assertEqual(results[0]["answer"], "lithium cells")
+        self.assertEqual(results[0]["source"], "unit")
+
+    def test_critique_requires_passage_in_input_rows(self) -> None:
+        critiquer = StubCritiquer(
+            ollama_url="http://localhost:11434",
+            model_id="llama3",
+            outputs=[
+                {
+                    "question": "What type of cells does a Zeliox unit contain?",
+                    "answer": "lithium cells",
+                    "content": "A Zeliox unit contains lithium cells.",
+                }
+            ],
+        )
+
+        with self.assertRaises(KeyError):
+            critiquer.critique()
+
+    def test_critique_uses_pre_synthesized_rows_without_running_synthesize(self) -> None:
+        critiquer = StubCritiquer(
+            ollama_url="http://localhost:11434",
+            model_id="llama3",
+            synthesizer=PreSynthesizedStubSynthesizer(
+                documents=[
+                    {
+                        "passage": "A Zeliox unit contains lithium cells.",
+                        "question": "What type of cells does a Zeliox unit contain?",
+                        "answer": "lithium cells",
+                        "metadata": {"source": "unit"},
+                    }
+                ]
+            ),
+        )
+
+        results = critiquer.critique()
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["question"], "What type of cells does a Zeliox unit contain?")
+        self.assertEqual(results[0]["answer"], "lithium cells")
+        self.assertEqual(results[0]["source"], "unit")
 
 
 if __name__ == "__main__":
