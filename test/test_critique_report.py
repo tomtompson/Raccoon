@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from crimsonvector.analysis.critique_report import build_critique_report, normalize_critique_row
+from raccoon.analysis.critique_report import build_critique_report, normalize_critique_row
 
 
 class CritiqueReportTest(unittest.TestCase):

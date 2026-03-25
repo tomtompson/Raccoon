@@ -2,8 +2,8 @@ import json
 import os
 from pathlib import Path
 
-from crimsonvector.dataloader.utils import load_langchain_documents
-from crimsonvector.synthesizer import OllamaSynthesizer
+from raccoon.dataloader.utils import load_langchain_documents
+from raccoon.synthesizer import OllamaSynthesizer
 
 
 INPUT_PATH = Path("data/processed/documents.jsonl")

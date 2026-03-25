@@ -2,7 +2,7 @@ import json
 import os
 from pathlib import Path
 
-from crimsonvector.synthesizer.critiquer.OllamaCritiquer import OllamaCritiquer
+from raccoon.synthesizer.critiquer.OllamaCritiquer import OllamaCritiquer
 
 
 OUTPUT_PATH = Path("data/processed/critique_filter.jsonl")

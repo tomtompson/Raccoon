@@ -366,7 +366,7 @@ wheels = [
 ]
 
 [[package]]
-name = "crimsonvector"
+name = "raccoon"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

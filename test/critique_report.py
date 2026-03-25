@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from crimsonvector.analysis import build_critique_report
+from raccoon.analysis import build_critique_report
 
 
 INPUT_PATH = Path("data/processed/critique.jsonl")

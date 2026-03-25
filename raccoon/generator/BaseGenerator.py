@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from statistics import mean
 from time import perf_counter
-from crimsonvector.retriever.BaseRetriever import BaseRetriever
+from raccoon.retriever.BaseRetriever import BaseRetriever
 from typing import Any
 
 

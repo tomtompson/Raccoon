@@ -8,7 +8,7 @@ from time import perf_counter
 from typing import Any
 from urllib import error, request
 
-from crimsonvector.analysis.critique_report import (
+from raccoon.analysis.critique_report import (
     DEFAULT_THRESHOLDS,
     normalize_critique_row,
     summarize_rows,

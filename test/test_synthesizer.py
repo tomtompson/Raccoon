@@ -2,7 +2,7 @@ import unittest
 
 from langchain_core.documents import Document
 
-from crimsonvector.synthesizer.OllamaSynthesizer import OllamaSynthesizer
+from raccoon.synthesizer.OllamaSynthesizer import OllamaSynthesizer
 
 
 class StubSynthesizer(OllamaSynthesizer):

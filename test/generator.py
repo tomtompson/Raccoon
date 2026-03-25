@@ -9,9 +9,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from testcontainers.elasticsearch import ElasticSearchContainer
 
-from crimsonvector.analysis.critique_report import load_critique_rows
-from crimsonvector.generator import OllamaGenerator
-from crimsonvector.retriever import BM25Retriever
+from raccoon.analysis.critique_report import load_critique_rows
+from raccoon.generator import OllamaGenerator
+from raccoon.retriever import BM25Retriever
 
 
 INPUT_PATH = Path("data/processed/critique_filter.jsonl")
@@ -31,7 +31,7 @@ def main() -> None:
         )
         retriever = BM25Retriever(
             elasticsearch_url=elasticsearch_url,
-            index_name="crimsonvector-generator-test",
+            index_name="raccoon-generator-test",
         )
         retriever.process_documents(rows)
 

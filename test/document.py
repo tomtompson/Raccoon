@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from crimsonvector.dataloader.FixedDocumentLoader import FixedDocumentLoader
-from crimsonvector.dataloader.utils import save_langchain_documents
+from raccoon.dataloader.FixedDocumentLoader import FixedDocumentLoader
+from raccoon.dataloader.utils import save_langchain_documents
 
 
 SOURCE_PATH = Path("data/raw")

@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from crimsonvector.retriever import BM25Retriever
+from raccoon.retriever import BM25Retriever
 
 
 class StubBM25Retriever(BM25Retriever):

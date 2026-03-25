@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
 
-from crimsonvector.dataloader.SQLDocumentLoader import SQLDocumentLoader
-from crimsonvector.dataloader.utils import save_langchain_documents
+from raccoon.dataloader.SQLDocumentLoader import SQLDocumentLoader
+from raccoon.dataloader.utils import save_langchain_documents
 
 
 CONNECTION_STRING = os.getenv(
-    "CRIMSONVECTOR_SQL_URL",
+    "RACCOON_SQL_URL",
     "postgresql://myuser:mypassword@localhost:5432/mydatabase",
 )
 OUTPUT_PATH = Path("data/processed/sql_documents.jsonl")

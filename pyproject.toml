@@ -1,5 +1,5 @@
 [project]
-name = "crimsonvector"
+name = "raccoon"
 version = "0.1.0"
 description = "Benchmark utilities for RAG experiment"
 readme = "README.md"
@@ -26,5 +26,5 @@ dependencies = [
 ]
 
 [[tool.setuptools.packages.find]]
-include = ["crimsonvector*"]
+include = ["raccoon*"]
 exclude = ["data*", "test*"]

@@ -340,13 +340,20 @@ class BaseRetriever(ABC):
         document_id: str,
         score: float,
         rank: int,
+        content: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Build the normalized hit payload shared by all retrievers."""
-        return {
+        hit = {
             "rank": rank,
             "score": round(float(score), 6),
             "document_id": document_id,
         }
+        if content is not None:
+            hit["content"] = content
+        if metadata is not None:
+            hit["metadata"] = dict(metadata)
+        return hit
 
     def _record_query(self, result: dict[str, Any]) -> None:
         """Append one search execution to the runtime query history."""

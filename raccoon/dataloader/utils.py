@@ -80,8 +80,7 @@ def save_synthesized_results(
                 f.write(json.dumps(record, ensure_ascii=ensure_ascii))
                 f.write("\n")
 
-
-
+def load_synthesized_results(input_path: str | Path) -> list[dict]:
     input_path = Path(input_path)
 
     if not input_path.exists():
@@ -103,6 +102,8 @@ def save_synthesized_results(
                 ) from e
 
     return rows
+
+
 def _make_json_safe(obj):
     if obj is None or isinstance(obj, (str, int, float, bool)):
         return obj

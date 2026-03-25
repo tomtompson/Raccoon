@@ -4,7 +4,7 @@ from typing import Any
 
 import pytrec_eval
 
-from crimsonvector.retriever.BaseRetriever import BaseRetriever
+from raccoon.retriever.BaseRetriever import BaseRetriever
 import collections
 
 

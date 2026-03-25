@@ -2,8 +2,8 @@ import unittest
 from urllib import error
 from urllib import request
 
-from crimsonvector.generator import BaseGenerator, OllamaGenerator
-from crimsonvector.retriever import BM25Retriever
+from raccoon.generator import BaseGenerator, OllamaGenerator
+from raccoon.retriever import BM25Retriever
 
 
 class StubRetriever:

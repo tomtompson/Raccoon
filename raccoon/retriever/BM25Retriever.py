@@ -90,6 +90,8 @@ class BM25Retriever(BaseRetriever):
                     document_id=document_id,
                     score=float(hit.get("_score", 0.0)),
                     rank=rank,
+                    content=str(source.get(self.content_field, "")),
+                    metadata=metadata,
                 )
             )
 

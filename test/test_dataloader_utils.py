@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from crimsonvector.dataloader.utils import (
+from raccoon.dataloader.utils import (
     load_synthesized_results,
     save_synthesized_results,
 )

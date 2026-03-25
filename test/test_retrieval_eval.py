@@ -1,6 +1,6 @@
 import unittest
 
-from crimsonvector.eval.retriever.RetrievelEval import RetrievelEval
+from raccoon.eval.retriever.RetrievelEval import RetrievelEval
 
 
 class StubRetriever:

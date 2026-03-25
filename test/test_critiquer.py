@@ -2,7 +2,7 @@ import unittest
 
 from langchain_core.documents import Document
 
-from crimsonvector.synthesizer.critiquer.OllamaCritiquer import OllamaCritiquer
+from raccoon.synthesizer.critiquer.OllamaCritiquer import OllamaCritiquer
 
 
 class StubCritiquer(OllamaCritiquer):
