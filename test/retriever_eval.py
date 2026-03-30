@@ -8,23 +8,21 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 from raccoon.eval.retriever.RetrievelEval import RetrievelEval
+from raccoon.retriever.BM25Retriever import BM25Retriever
 
-
-INPUT_PATH = Path("data/processed/bm25_results.json")
-OUTPUT_PATH = Path("data/processed/bm25_eval.json")
-TOP_K = 20
 
 
 def main() -> None:
-    with open(INPUT_PATH) as json_file:
-        rows = json.load(json_file)
+
+    retriever = BM25Retriever()
+    retriever.load("data/processed")
+
+    eva = RetrievelEval(retriever=retriever)
     
-    eva = RetrievelEval()
 
-    results = eva.evaluate(raw_results=rows)
+    eva.evaluate()
 
-    with open(OUTPUT_PATH, "w") as f:
-        json.dump(results, f, indent=2)
+    eva.save("data/processed")
 
 if __name__ == "__main__":
     main()

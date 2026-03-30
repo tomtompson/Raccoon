@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 from langchain_core.documents import Document
 
@@ -159,6 +161,36 @@ class OllamaCritiquerTest(unittest.TestCase):
         self.assertEqual(results[0]["question"], "What type of cells does a Zeliox unit contain?")
         self.assertEqual(results[0]["answer"], "lithium cells")
         self.assertEqual(results[0]["source"], "unit")
+
+    def test_save_and_load_round_trip_preserves_results_and_metrics(self) -> None:
+        critiquer = StubCritiquer(
+            ollama_url="http://localhost:11434",
+            model_id="llama3",
+            outputs=[
+                {
+                    "question": "What type of cells does a Zeliox unit contain?",
+                    "answer": "lithium cells",
+                    "passage": "A Zeliox unit contains lithium cells.",
+                }
+            ],
+        )
+        critiquer.critique()
+        critiquer.filter()
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            output_path = Path(tmp_dir) / "critique.json"
+            critiquer.save(output_path)
+
+            loaded = StubCritiquer(
+                ollama_url="http://localhost:11434",
+                model_id="placeholder",
+            )
+            loaded.load(output_path)
+
+        self.assertEqual(loaded.results, critiquer.results)
+        self.assertEqual(loaded.metrics, critiquer.metrics)
+        self.assertEqual(loaded.outputs, critiquer.outputs)
+        self.assertEqual(loaded.model_id, "llama3")
 
 
 if __name__ == "__main__":

@@ -9,8 +9,8 @@ class StubSynthesizer(OllamaSynthesizer):
     def call_llm(self, passage: str) -> dict[str, str]:
         return {
             "response": (
-                "Factoid question: What chunk overlap is configured?\n"
-                "Answer: The chunk overlap is 200."
+                '{"question": "What chunk overlap is configured?", '
+                '"answer": "The chunk overlap is 200."}'
             )
         }
 
@@ -91,6 +91,20 @@ class OllamaSynthesizerTest(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             synthesizer.parse_generated_response("not-json")
+
+    def test_parse_generated_response_accepts_legacy_format(self) -> None:
+        synthesizer = StubSynthesizer(
+            ollama_url="http://localhost:11434",
+            model_id="llama3",
+        )
+
+        parsed = synthesizer.parse_generated_response(
+            "Factoid question: What chunk overlap is configured?\n"
+            "Answer: The chunk overlap is 200."
+        )
+
+        self.assertEqual(parsed["question"], "What chunk overlap is configured?")
+        self.assertEqual(parsed["answer"], "The chunk overlap is 200.")
 
 
 if __name__ == "__main__":

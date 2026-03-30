@@ -4,7 +4,10 @@ from abc import ABC, abstractmethod
 from typing import Any, Iterable
 
 from langchain_core.documents import Document
+from raccoon.dataloader import BaseLoader
 
+import json
+from pathlib import Path
 
 class BaseSynthesizer(ABC):
     def __init__(
@@ -45,6 +48,47 @@ class BaseSynthesizer(ABC):
         processed_documents = [self.process_doc(document) for document in source_documents]
         self.processed_documents = processed_documents
         return processed_documents
+    
+    def save_results(self,
+    output_path: str | Path,
+    ensure_ascii: bool = False,
+    pretty: bool = False,
+    ) -> None:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with output_path.open("w", encoding="utf-8") as f:
+            for row in self.results:
+                record = dict(row)
+                if pretty:
+                    f.write(json.dumps(record, ensure_ascii=ensure_ascii, indent=2))
+                    f.write("\n")
+                else:
+                    f.write(json.dumps(record, ensure_ascii=ensure_ascii))
+                    f.write("\n")
+
+    def load_results(self, input_path: str | Path) -> list[dict]:
+        input_path = Path(input_path)
+
+        if not input_path.exists():
+            raise FileNotFoundError(f"File not found: {input_path}")
+
+        rows: list[dict] = []
+
+        with input_path.open("r", encoding="utf-8") as f:
+            for line_number, line in enumerate(f, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+
+                try:
+                    rows.append(dict(json.loads(line)))
+                except Exception as e:
+                    raise ValueError(
+                        f"Failed to parse line {line_number} in {input_path}: {e}"
+                    ) from e
+        self.results = rows
+        return rows
 
     @abstractmethod
     def _load_llm(self):

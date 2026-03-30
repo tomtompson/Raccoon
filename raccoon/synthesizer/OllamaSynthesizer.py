@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from statistics import mean
 from time import perf_counter
 from typing import Any
@@ -9,6 +10,7 @@ from urllib import error, request
 from langchain_core.documents import Document
 
 from .BaseSynthesizer import BaseSynthesizer
+from raccoon.dataloader import BaseLoader
 
 
 DEFAULT_PROMPT = """Your task is to write a factoid question and an answer given a context.
@@ -16,17 +18,16 @@ Your factoid question should be answerable with a specific, concise piece of fac
 Your factoid question should be formulated in the same style as questions users could ask in a search engine.
 This means that your factoid question MUST NOT mention something like "according to the passage" or "context".
 
-
-Provide your answer as follows:
-
-Output:::
-Factoid question: (your factoid question)
-Answer: (your answer to the factoid question)
+Return valid JSON only with exactly these keys:
+{{
+  "question": "...",
+  "answer": "..."
+}}
 
 Now here is the context.
 
-Context: {context}\n
-Output:::"""
+Context: {context} \n
+JSON:"""
 
 
 class OllamaSynthesizer(BaseSynthesizer):
@@ -35,14 +36,16 @@ class OllamaSynthesizer(BaseSynthesizer):
         ollama_url: str,
         model_id: str,
         documents: list[Document | dict[str, Any]] | None = None,
+        dataloader: BaseLoader | None = None,
         config: dict | None = None,
         prompt: str | None = None,
         timeout: int = 120,
     ):
+        source_documents = documents if documents is not None else getattr(dataloader, "data", None)
         super().__init__(
             config=config,
             model_id=model_id,
-            documents=documents,
+            documents=source_documents,
             prompt=prompt or DEFAULT_PROMPT,
         )
         self.ollama_url = ollama_url.rstrip("/")
@@ -59,7 +62,18 @@ class OllamaSynthesizer(BaseSynthesizer):
             "stream": False,
             "options": {
                 "num_ctx": 4096
-            }
+            },
+            "format": {
+                "type": "object",
+                "properties": {
+                    "question": {"type": "string"},
+                    "answer": {"type": "string"},
+                },
+                "required": [
+                    "question",
+                    "answer",
+                ],
+            },
         }
 
         req = request.Request(
@@ -125,12 +139,48 @@ class OllamaSynthesizer(BaseSynthesizer):
         return results
 
     def parse_generated_response(self, generated_text: str) -> dict[str, str]:
-        if "Factoid question: " not in generated_text or "Answer: " not in generated_text:
-            raise RuntimeError("Generated Ollama response was not valid to extract")
+        generated_text = str(generated_text).strip()
+        if not generated_text:
+            raise RuntimeError("Generated Ollama response was empty.")
+
+        json_pair = self._parse_json_response(generated_text)
+        if json_pair is not None:
+            return json_pair
+
+        legacy_pair = self._parse_legacy_response(generated_text)
+        if legacy_pair is not None:
+            return legacy_pair
+
+        raise RuntimeError("Generated Ollama response was not valid to extract")
+
+    def _parse_json_response(self, generated_text: str) -> dict[str, str] | None:
+        try:
+            payload = json.loads(generated_text)
+        except json.JSONDecodeError:
+            return None
+
+        if not isinstance(payload, dict):
+            return None
+
+        question = str(payload.get("question", "")).strip()
+        answer = str(payload.get("answer", "")).strip()
+        if not question or not answer:
+            raise RuntimeError("Generated Ollama response is missing question or answer.")
+
+        return {"question": question, "answer": answer}
+
+    def _parse_legacy_response(self, generated_text: str) -> dict[str, str] | None:
+        match = re.search(
+            r"Factoid question:\s*(.*?)\s*Answer:\s*(.*)",
+            generated_text,
+            flags=re.DOTALL,
+        )
+        if match is None:
+            return None
 
         try:
-            question = generated_text.split("Factoid question: ", 1)[1].split("Answer: ", 1)[0].strip()
-            answer = generated_text.split("Answer: ", 1)[1].strip()
+            question = match.group(1).strip()
+            answer = match.group(2).strip()
         except Exception as exc:
             raise RuntimeError("Generated Ollama response was not valid to extract") from exc
 

@@ -38,3 +38,11 @@ class BaseCritiquer(ABC):
     @abstractmethod
     def filter(self):
         pass
+
+    @abstractmethod
+    def save(self, path):
+        pass
+
+    @abstractmethod
+    def load(self, path):
+        pass

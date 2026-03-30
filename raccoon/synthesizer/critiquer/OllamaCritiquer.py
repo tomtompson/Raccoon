@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import re
+from pathlib import Path
 from statistics import mean
 from time import perf_counter
 from typing import Any
@@ -321,3 +322,43 @@ class OllamaCritiquer(BaseCritiquer):
             raise RuntimeError("Critique response is missing Evaluation or Total rating.")
 
         return int(rating_match.group(1)), rationale_match.group(1).strip()
+
+    def save(self, path: str | Path) -> None:
+        output_path = Path(path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        state = {
+            "results": self.results,
+            "metrics": self.metrics,
+            "outputs": self.outputs,
+            "model_id": self.model_id,
+            "config": self.config,
+        }
+
+        output_path.write_text(
+            json.dumps(state, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    def load(self, path: str | Path) -> None:
+        input_path = Path(path)
+        state = json.loads(input_path.read_text(encoding="utf-8"))
+
+        self.results = list(state.get("results", []))
+        self.metrics = self._restore_numeric_keys(dict(state.get("metrics", {})))
+        self.outputs = list(state.get("outputs", []))
+        self.model_id = state.get("model_id", self.model_id)
+        self.config = dict(state.get("config", self.config))
+
+    def _restore_numeric_keys(self, value: Any) -> Any:
+        if isinstance(value, list):
+            return [self._restore_numeric_keys(item) for item in value]
+
+        if not isinstance(value, dict):
+            return value
+
+        restored: dict[Any, Any] = {}
+        for key, item in value.items():
+            restored_key: Any = int(key) if isinstance(key, str) and key.isdigit() else key
+            restored[restored_key] = self._restore_numeric_keys(item)
+        return restored

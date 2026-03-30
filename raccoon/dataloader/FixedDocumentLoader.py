@@ -57,11 +57,12 @@ class FixedDocumentLoader(BaseLoader):
         else:
             documents = self._load_directory(self.path)
 
+        documents = self._drop_empty_documents(documents)
         self.data = documents
         return documents
 
     def preprocess_data(self, data: list[Document]) -> list[Document]:
-        return self.text_splitter.split_documents(data)
+        return self._drop_empty_documents(self.text_splitter.split_documents(data))
 
     def _load_single_file(self, file_path: Path) -> list[Document]:
         suffix = file_path.suffix.lower()
@@ -109,3 +110,9 @@ class FixedDocumentLoader(BaseLoader):
             documents.extend(loader.load())
 
         return documents
+    def _drop_empty_documents(self, documents:
+        list[Document]) -> list[Document]:
+        return [
+            doc
+          for doc in documents
+          if str(doc.page_content).strip()]

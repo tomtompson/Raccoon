@@ -164,7 +164,7 @@ class BaseRetriever(ABC):
             "index_elapsed_seconds": round(self._index_elapsed_seconds, 4),
         }
 
-        (output_path / "state.json").write_text(
+        (output_path / "retriever_state.json").write_text(
             json.dumps(state, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
@@ -173,7 +173,7 @@ class BaseRetriever(ABC):
     def load(self, path: str | Path) -> None:
         """Load shared retriever state and then restore subclass-specific artifacts."""
         input_path = Path(path)
-        state = json.loads((input_path / "state.json").read_text(encoding="utf-8"))
+        state = json.loads((input_path / "retriever_state.json").read_text(encoding="utf-8"))
 
         self.config = state.get("config", {})
         self.benchmark_data = state.get("benchmark_data", self._empty_benchmark_data())

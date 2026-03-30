@@ -15,8 +15,8 @@ class BM25Retriever(BaseRetriever):
 
     def __init__(
         self,
-        elasticsearch_url: str,
-        index_name: str,
+        elasticsearch_url: str | None = None,
+        index_name: str | None = None,
         language: str = "english",
         config: dict[str, Any] | None = None,
         content_field: str = "content",
@@ -27,17 +27,20 @@ class BM25Retriever(BaseRetriever):
     ) -> None:
         super().__init__(config=config)
         self.topk = topk
-        self.elasticsearch_url = elasticsearch_url.rstrip("/")
-        self.index_name = index_name
+        if elasticsearch_url:
+            self.elasticsearch_url = elasticsearch_url.rstrip("/")
+        if index_name:
+            self.index_name = index_name
         self.language = language
         self.content_field = content_field
         self.metadata_field = metadata_field
         self.refresh_on_write = refresh_on_write
         self.timeout = timeout
-        self.client = Elasticsearch(
-            hosts=[self.elasticsearch_url],
-            request_timeout=self.timeout,
-        )
+        if elasticsearch_url:
+            self.client = Elasticsearch(
+                hosts=[self.elasticsearch_url],
+                request_timeout=self.timeout,
+            )
 
     def _prepare_retrieval_state(self, documents: list[DocumentRecord]) -> None:
         """Create the BM25 index and write every processed document into it."""

@@ -14,7 +14,6 @@ from raccoon.retriever import BM25Retriever
 
 
 INPUT_PATH = Path("data/processed/critique_filter.jsonl")
-OUTPUT_PATH = Path("data/processed/bm25_results.json")
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
 TOP_K = 20
 
@@ -32,14 +31,7 @@ def main() -> None:
         )
         retriever.process_documents(rows)
         retriever.bulk_search(top_k=TOP_K)
-
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text(
-        json.dumps(retriever.benchmark_data, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-
-    print(f"Saved {len(retriever.benchmark_data['results'])} BM25 search results to {OUTPUT_PATH}")
+        retriever.save("data/processed")
 
 
 if __name__ == "__main__":

@@ -16,3 +16,4 @@ docx2txt
 sqlalchemy
 testcontainers
 pytrec-eval-terrier
+fpdf2

@@ -7,6 +7,8 @@ import pytrec_eval
 from raccoon.retriever.BaseRetriever import BaseRetriever
 import collections
 
+from pathlib import Path
+import json
 
 class RetrievelEval:
     def __init__(
@@ -154,12 +156,50 @@ class RetrievelEval:
                                             key=lambda item: (item[0].split("@")[0], int(item[0].split("@")[1])),
                                         )
                                     )
+        
+        self.summary_results = summary
+        self.diagnostics_results = diagnostics
+        self.per_query_results = per_query
+        self.raw_results =  {
+            "summary": summary,
+            "diagnostics": diagnostics,
+            "per_query": per_query,
+
+        }
 
         return {
             "summary": summary,
             "diagnostics": diagnostics,
             "per_query": per_query,
 
+        }
+    
+    def save(self, path: str | Path) -> None:
+        output_path = Path(path)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        state = {
+            "summary": self.summary_results,
+            "diagnostics": self.diagnostics_results,
+            "per_query": self.per_query_results,
+        }
+
+        (output_path / "retriever_eval_state.json").write_text(
+            json.dumps(state, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    def load(self, path: str | Path) -> None:
+        input_path = Path(path)
+        state = json.loads((input_path / "retriever_eval_state.json").read_text(encoding="utf-8"))
+
+        self.summary_results = state.get("summary", {})
+        self.diagnostics_results = state.get("diagnostics", {})
+        self.per_query_results = state.get("per_query", {})
+        self.raw_results = {
+            "summary": self.summary_results,
+            "diagnostics": self.diagnostics_results,
+            "per_query": self.per_query_results,
         }
 
     def _build_measure_strings(self) -> set[str]:
