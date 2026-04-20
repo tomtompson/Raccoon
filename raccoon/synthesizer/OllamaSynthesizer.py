@@ -1,190 +1,247 @@
 from __future__ import annotations
 
 import json
-import re
-from statistics import mean
-from time import perf_counter
+from pathlib import Path
 from typing import Any
-from urllib import error, request
 
+import ollama
 from langchain_core.documents import Document
 
 from .BaseSynthesizer import BaseSynthesizer
 from raccoon.dataloader import BaseLoader
-
-
-DEFAULT_PROMPT = """Your task is to write a factoid question and an answer given a context.
-Your factoid question should be answerable with a specific, concise piece of factual information from the context.
-Your factoid question should be formulated in the same style as questions users could ask in a search engine.
-This means that your factoid question MUST NOT mention something like "according to the passage" or "context".
-
-Return valid JSON only with exactly these keys:
-{{
-  "question": "...",
-  "answer": "..."
-}}
-
-Now here is the context.
-
-Context: {context} \n
-JSON:"""
+from raccoon.synthesizer.helper import (
+    _extract_json_array,
+    _extract_json_object,
+    _safe_int,
+)
 
 
 class OllamaSynthesizer(BaseSynthesizer):
     def __init__(
         self,
-        ollama_url: str,
-        model_id: str,
-        documents: list[Document | dict[str, Any]] | None = None,
-        dataloader: BaseLoader | None = None,
-        config: dict | None = None,
-        prompt: str | None = None,
-        timeout: int = 120,
+        prompt_paths: dict[str, str | Path] | None = None,
+        prompts: dict[str, str] | None = None,
+        host: str | None = None,
+        num_ctx: int = 8192,
     ):
-        source_documents = documents if documents is not None else getattr(dataloader, "data", None)
-        super().__init__(
-            config=config,
-            model_id=model_id,
-            documents=source_documents,
-            prompt=prompt or DEFAULT_PROMPT,
+        self.prompts = {}
+        self.host = host
+        self.num_ctx = num_ctx
+
+        if prompts:
+            self.prompts.update(prompts)
+
+        if prompt_paths:
+            self.load_prompts(prompt_paths)
+
+        if self.host:
+            self.client = ollama.Client(host=self.host)
+        else:
+            self.client = ollama.Client()
+
+    def _ollama_chat_json(
+        self,
+        model: str,
+        prompt: str,
+        schema: dict,
+        temperature: float = 0.0,
+        think: bool = False,
+    ) -> str:
+        try:
+            response = self.client.chat(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                options={
+                    "temperature": temperature,
+                    "num_ctx": self.num_ctx,
+                },
+                think=think,
+                format=schema,
+            )
+        except Exception as exc:
+            raise RuntimeError(f"Ollama chat call failed for model '{model}': {exc}") from exc
+
+        try:
+            return response["message"]["content"]
+        except Exception as exc:
+            raise RuntimeError(f"Unexpected Ollama response shape: {response}") from exc
+
+    def _generate_realistic_query_candidates_from_parent(
+        self,
+        parent_text: str,
+        model: str,
+        n_candidates: int = 8,
+        parent_text_limit: int = 2200,
+    ) -> list[str]:
+        prompt = self.render_prompt(
+            "query_generation",
+            n_candidates=n_candidates,
+            parent_text=parent_text[:parent_text_limit],
         )
-        self.ollama_url = ollama_url.rstrip("/")
-        self.timeout = timeout
-        self.endpoint = self._load_llm()
 
-    def _load_llm(self) -> str:
-        return f"{self.ollama_url}/api/generate"
+        schema = {
+            "type": "array",
+            "items": {"type": "string"},
+        }
 
-    def call_llm(self, passage: str) -> dict[str, Any]:
-        payload = {
-            "model": self.model_id,
-            "prompt": self.prompt.format(context=passage),
-            "stream": False,
-            "options": {
-                "num_ctx": 4096
+        content = self._ollama_chat_json(
+            model=model,
+            prompt=prompt,
+            schema=schema,
+            temperature=0.9,
+            think=False,
+        )
+
+        queries = _extract_json_array(content)
+        queries = [q.strip() for q in queries if isinstance(q, str) and q.strip()]
+        return queries[:n_candidates]
+
+    def _validate_query_grounding(
+        self,
+        query: str,
+        parent_text: str,
+        model: str,
+        parent_text_limit: int = 2200,
+    ) -> dict:
+        prompt = self.render_prompt(
+            "query_validation",
+            query=query,
+            parent_text=parent_text[:parent_text_limit],
+        )
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "keep": {"type": "boolean"},
+                "grounded_in_text": {"type": "boolean"},
+                "realistic_user_query": {"type": "boolean"},
+                "too_broad": {"type": "boolean"},
+                "too_case_specific": {"type": "boolean"},
+                "copied_from_text": {"type": "boolean"},
+                "artificial_or_benchmarky": {"type": "boolean"},
+                "unsupported_by_text": {"type": "boolean"},
+                "explanation": {"type": "string"},
             },
-            "format": {
+            "required": [
+                "keep",
+                "grounded_in_text",
+                "realistic_user_query",
+                "too_broad",
+                "too_case_specific",
+                "copied_from_text",
+                "artificial_or_benchmarky",
+                "unsupported_by_text",
+                "explanation",
+            ],
+        }
+
+        content = self._ollama_chat_json(
+            model=model,
+            prompt=prompt,
+            schema=schema,
+            temperature=0.0,
+            think=False,
+        )
+
+        return _extract_json_object(content)
+
+    def _judge_candidates_with_ollama_realistic(
+        self,
+        query: str,
+        candidates: list,
+        model: str,
+        candidate_text_limit: int = 700,
+    ) -> list[dict]:
+        formatted_candidates = []
+        for c in candidates:
+            formatted_candidates.append({
+                "child_id": c["child_id"],
+                "title": (c.get("title", "") or "")[:180],
+                "text": (c.get("text", "") or "")[:candidate_text_limit],
+            })
+
+        prompt = self.render_prompt(
+            "candidate_judging",
+            query=query,
+            candidates_json=json.dumps(formatted_candidates, ensure_ascii=False),
+        )
+
+        schema = {
+            "type": "array",
+            "items": {
                 "type": "object",
                 "properties": {
-                    "question": {"type": "string"},
-                    "answer": {"type": "string"},
+                    "child_id": {"type": "string"},
+                    "score": {"type": "integer"},
+                    "reason": {"type": "string", "maxLength": 160},
                 },
-                "required": [
-                    "question",
-                    "answer",
-                ],
+                "required": ["child_id", "score", "reason"],
             },
         }
 
-        req = request.Request(
-            self.endpoint,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
+        content = self._ollama_chat_json(
+            model=model,
+            prompt=prompt,
+            schema=schema,
+            temperature=0.0,
+            think=False,
         )
 
-        try:
-            with request.urlopen(req, timeout=self.timeout) as response:
-                response_body = response.read().decode("utf-8")
-        except error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"Ollama request failed with status {exc.code}: {detail}") from exc
-        except error.URLError as exc:
-            raise RuntimeError(f"Unable to reach Ollama at {self.endpoint}: {exc.reason}") from exc
+        judgments = _extract_json_array(content)
 
-        try:
-            return json.loads(response_body)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError("Ollama returned a non-JSON response.") from exc
+        cleaned = []
+        for j in judgments:
+            child_id = str(j.get("child_id", "")).strip()
+            score = max(0, min(3, _safe_int(j.get("score", 0), 0)))
+            reason = str(j.get("reason", "")).strip()
 
-    def synthesize(self) -> list[dict[str, Any]]:
-        results: list[dict[str, Any]] = []
-        processed_documents = self.process_documents()
-        document_count = len(processed_documents)
-        llm_call_durations: list[float] = []
-        run_started_at = perf_counter()
+            if child_id:
+                cleaned.append({
+                    "child_id": child_id,
+                    "score": score,
+                    "reason": reason,
+                })
 
-        for processed_document in processed_documents:
-            call_started_at = perf_counter()
-            generated = self.call_llm(processed_document["passage"])
-            call_elapsed = perf_counter() - call_started_at
-            llm_call_durations.append(call_elapsed)
-            generated_text = generated.get("response", "")
-            qa_pair = self.parse_generated_response(generated_text)
+        return cleaned
 
-            results.append(
-                {
-                    **processed_document,
-                    "generated": generated_text,
-                    "question": qa_pair["question"],
-                    "answer": qa_pair["answer"],
-                    "synthesis_elapsed_seconds": round(call_elapsed, 4),
-                }
-            )
+    def _judge_query_distribution_quality(
+        self,
+        query: str,
+        judgments: list[dict],
+        model: str,
+    ) -> dict:
+        prompt = self.render_prompt(
+            "distribution_validation",
+            query=query,
+            judgments_json=json.dumps(judgments, ensure_ascii=False),
+        )
 
-        self.results = results
-        total_elapsed = perf_counter() - run_started_at
-        self.metrics = {
-            "documents_total": document_count,
-            "generated": len(results),
-            "questions_generated": len(results),
-            "answers_generated": len(results),
-            "llm_call_count": len(llm_call_durations),
-            "llm_total_elapsed_seconds": round(sum(llm_call_durations), 4),
-            "llm_average_elapsed_seconds": round(mean(llm_call_durations), 4) if llm_call_durations else 0.0,
-            "elapsed_seconds": round(total_elapsed, 4),
-            "average_elapsed_seconds_per_document": round(total_elapsed / document_count, 4) if document_count else 0.0,
-            "model_id": self.model_id,
+        schema = {
+            "type": "object",
+            "properties": {
+                "keep": {"type": "boolean"},
+                "answerable": {"type": "boolean"},
+                "plausible_distribution": {"type": "boolean"},
+                "too_generic": {"type": "boolean"},
+                "too_artificial": {"type": "boolean"},
+                "explanation": {"type": "string"},
+            },
+            "required": [
+                "keep",
+                "answerable",
+                "plausible_distribution",
+                "too_generic",
+                "too_artificial",
+                "explanation",
+            ],
         }
-        return results
 
-    def parse_generated_response(self, generated_text: str) -> dict[str, str]:
-        generated_text = str(generated_text).strip()
-        if not generated_text:
-            raise RuntimeError("Generated Ollama response was empty.")
-
-        json_pair = self._parse_json_response(generated_text)
-        if json_pair is not None:
-            return json_pair
-
-        legacy_pair = self._parse_legacy_response(generated_text)
-        if legacy_pair is not None:
-            return legacy_pair
-
-        raise RuntimeError("Generated Ollama response was not valid to extract")
-
-    def _parse_json_response(self, generated_text: str) -> dict[str, str] | None:
-        try:
-            payload = json.loads(generated_text)
-        except json.JSONDecodeError:
-            return None
-
-        if not isinstance(payload, dict):
-            return None
-
-        question = str(payload.get("question", "")).strip()
-        answer = str(payload.get("answer", "")).strip()
-        if not question or not answer:
-            raise RuntimeError("Generated Ollama response is missing question or answer.")
-
-        return {"question": question, "answer": answer}
-
-    def _parse_legacy_response(self, generated_text: str) -> dict[str, str] | None:
-        match = re.search(
-            r"Factoid question:\s*(.*?)\s*Answer:\s*(.*)",
-            generated_text,
-            flags=re.DOTALL,
+        content = self._ollama_chat_json(
+            model=model,
+            prompt=prompt,
+            schema=schema,
+            temperature=0.0,
+            think=False,
         )
-        if match is None:
-            return None
 
-        try:
-            question = match.group(1).strip()
-            answer = match.group(2).strip()
-        except Exception as exc:
-            raise RuntimeError("Generated Ollama response was not valid to extract") from exc
-
-        if not question or not answer:
-            raise RuntimeError("Generated Ollama response is missing question or answer.")
-
-        return {"question": question, "answer": answer}
+        return _extract_json_object(content)

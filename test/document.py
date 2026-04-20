@@ -3,8 +3,8 @@ from pathlib import Path
 from raccoon.dataloader.FixedDocumentLoader import FixedDocumentLoader
 
 
-SOURCE_PATH = Path("data/raw")
-OUTPUT_PATH = Path("data/processed/chunks/")
+SOURCE_PATH = Path("data/raw/rechtspraak")
+OUTPUT_PATH = Path("data/processed/chunks_recht")
 
 
 def main() -> None:

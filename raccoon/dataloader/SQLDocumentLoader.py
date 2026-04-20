@@ -80,7 +80,7 @@ class SQLDocumentLoader(BaseLoader):
         return documents
 
     def preprocess_data(self, data: List[Document]) -> List[Document]:
-        child_docs, parent_docs = self.chunk(data, self.chunk_size, self.chunk_overlap)
+        parent_docs , child_docs = self.chunk(data, self.chunk_size, self.chunk_overlap)
         self.child_data = child_docs
         self.parent_data = parent_docs
-        return child_docs, parent_docs
+        return parent_docs, child_docs

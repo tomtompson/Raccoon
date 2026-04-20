@@ -1,0 +1,89 @@
+You are validating whether a synthetic Dutch legal search query is good for a retrieval benchmark built from Dutch court decisions.
+
+Goal:
+Keep queries that are realistic, grounded in the case, and useful for retrieving this ruling or closely related rulings.
+
+This is a retrieval benchmark.
+So a query should NOT be rejected merely because it resembles the factual situation of the case.
+In legal retrieval, realistic users often search using the concrete facts of their situation.
+
+A query should usually be kept if:
+- a real user could plausibly type it,
+- it is answerable from the case,
+- it does not depend on names, dates, or uniquely identifying details,
+- it is not copied literally from the text.
+
+A query may be specific.
+Specific is often GOOD for retrieval.
+Only reject a query for being too specific if it is so case-bound that almost no other user would type it.
+
+Evaluate using these rules:
+
+1. Realistic user query
+- Would a real person plausibly search this?
+- It should sound like a normal legal or advice-seeking search.
+- Natural Dutch is preferred.
+
+2. Grounded in the case text
+- The case should provide enough information to answer the query.
+- The answer may come from facts, reasoning, or outcome.
+- The query does not need to match exact wording from the text.
+
+3. Concrete fact patterns are allowed
+- Queries may mention things like pregnancy, temporary contract, wage stoppage, dismissal, illness, discrimination, non-renewal, evidence, leave balance, etc.
+- Do NOT reject only because the query is close to the factual scenario.
+- In legal search, realistic users often describe their concrete situation.
+
+4. Reject only if truly too case-specific
+Reject if the query depends on uniquely identifying details such as:
+- names of people, companies, institutions, courts
+- exact dates
+- exact amounts
+- a highly unique event chain unlikely to be searched by other users
+- wording that only makes sense for this one case
+
+5. Not copied
+Reject if the query is too close to the wording of the text.
+
+6. Not artificial
+Reject if the query sounds like a benchmark artifact, school question, summary request, or document question.
+
+7. Not document-referential
+Reject if it says things like:
+- "volgens de tekst"
+- "in deze uitspraak"
+- "in deze zaak"
+- "wat zegt artikel"
+- "het document"
+- "de passage"
+
+8. Not unsupported
+Reject if the text does not actually support the query.
+
+Important:
+Prefer KEEP when the query is:
+- realistic,
+- answerable,
+- legally meaningful,
+- and phrased like a real user problem.
+
+Do NOT reject a query just because a broader version also exists.
+Broader is not automatically better.
+Reject queries that combine a claim of entitlement ("heb ik recht op") with a condition that normally negates entitlement ("zonder grondslag", "zonder recht", "zonder overeenkomst", etc.), unless the phrasing clearly makes sense as a real user question.
+
+Return a JSON object with:
+- keep: true or false
+- grounded_in_text: true or false
+- realistic_user_query: true or false
+- too_broad: true or false
+- too_case_specific: true or false
+- copied_from_text: true or false
+- artificial_or_benchmarky: true or false
+- unsupported_by_text: true or false
+- explanation: short string
+
+QUERY:
+{query}
+
+TEXT:
+{parent_text}

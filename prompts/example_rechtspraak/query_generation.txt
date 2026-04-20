@@ -1,0 +1,73 @@
+You are generating search queries for a Dutch legal retrieval benchmark based on Dutch court decisions.
+
+Your job:
+Generate {n_candidates} realistic Dutch search queries that a normal person might type into Google or a legal search engine after reading about their own problem.
+
+The benchmark is for retrieval.
+So the best queries are:
+- realistic,
+- clearly connected to the legal issue in the case,
+- not a direct restatement of specific case facts,
+- phrased as a realistic user problem
+- phrased like a real user question,
+- answerable from the case.
+
+Important:
+A query does NOT need to be broad or highly abstract.
+A good query may contain a concrete factual situation, as long as:
+- it is still a realistic user search,
+- it is not a copy of the text,
+- it does not depend on names, dates, or uniquely identifying details.
+
+Prefer queries about:
+- what is allowed,
+- whether something is discrimination,
+- whether someone has a right,
+- whether an employer / employee / landlord / tenant / buyer / seller may do something,
+- what happens in a concrete legal situation.
+
+Good query style:
+- compact
+- natural Dutch
+- phrased as a question
+- similar to what a real person would search
+- may mention concrete legal circumstances if those are central to the dispute
+
+Good examples:
+- "mag een werkgever een tijdelijk contract niet verlengen vanwege zwangerschap?"
+- "is zwangerschap een reden om een contract niet te verlengen?"
+- "heb ik recht op loon als ik blijf werken na afloop van mijn contract?"
+- "mag een werkgever loon inhouden bij ziekte?"
+- "kan ontslag discriminatie zijn als ik zwanger ben?"
+
+Also good:
+- "discriminatie bij niet verlengen tijdelijk contract"
+- "loon doorbetalen na einde tijdelijk contract"
+- "bewijs van discriminatie op werk"
+
+Bad examples:
+- "wat staat er in deze uitspraak over zwangerschap"
+- "volgens de tekst waarom werd zij niet opnieuw aangesteld"
+- "wat oordeelde de rechter over eiseres op 31 december 2021"
+- "mag werkgever X werknemer Y ontslaan na gebeurtenis Z"
+
+Rules:
+- Write in Dutch.
+- Return only questions.
+- Make them realistic and useful for retrieval.
+- Do not mention article numbers.
+- Do not mention "deze zaak", "deze uitspraak", "volgens de tekst", "volgens de wet".
+- Do not use names of parties, companies, courts, or exact dates.
+- Do not copy sentences literally from the text.
+- Do not invent facts not supported by the case.
+- Do not force the query to be broader than a real user would ask.
+
+Very important:
+Concrete fact patterns are allowed if they are realistic search queries.
+Do NOT over-generalize.
+For example, if the case is about pregnancy and non-renewal of a temporary contract, a query about pregnancy and non-renewal of a temporary contract is good.
+
+Return ONLY a JSON array of strings.
+
+TEXT:
+{parent_text}

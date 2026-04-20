@@ -27,42 +27,23 @@ class BaseLoader(ABC):
         data = self.load_data()
         return self.preprocess_data(data)
     
-    def _save_documents(
-    self,
-    documents: list[Document],
-    output_path: str | Path,
-    ensure_ascii: bool = False,
-    pretty: bool = False,
-    ) -> None:
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with output_path.open("w", encoding="utf-8") as f:
-            for doc in documents:
-                record = {
-                    "page_content": doc.page_content,
-                    "metadata": doc.metadata,
-                }
-
-                if pretty:
-                    f.write(json.dumps(record, ensure_ascii=ensure_ascii, indent=2))
-                else:
-                    f.write(json.dumps(record, ensure_ascii=ensure_ascii))
-
-                f.write("\n")
     
+    def _save_chunks(self, chunks, path):
+        p = Path(path)
+        p.parent.mkdir(exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump([{"content": c.page_content, "metadata": c.metadata} for c in chunks], f, ensure_ascii=False, indent=2)
+        
     def save_chunked_documents(
     self,
     parent_output_path: str | Path,
     child_output_path: str | Path,
-    ensure_ascii: bool = False,
-    pretty: bool = False,
     ) -> None:
         if self.parent_data is None or self.child_data is None:
             raise ValueError("No chunked documents available. Run preprocess_data() first.")
 
-        self._save_documents(self.parent_data, parent_output_path, ensure_ascii=ensure_ascii, pretty=pretty)
-        self._save_documents(self.child_data, child_output_path, ensure_ascii=ensure_ascii, pretty=pretty)
+        self._save_chunks(self.parent_data, parent_output_path)
+        self._save_chunks(self.child_data, child_output_path,)
 
     def load_documents(self, input_path: str | Path) -> list[Document]:
         input_path = Path(input_path)
@@ -134,4 +115,4 @@ class BaseLoader(ABC):
                 }
                 child_docs.append(child_doc)
 
-        return child_docs, parent_docs
+        return  parent_docs, child_docs
