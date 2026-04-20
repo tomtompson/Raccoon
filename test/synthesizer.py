@@ -2,18 +2,19 @@ import json
 import os
 from pathlib import Path
 
-from raccoon.dataloader.utils import load_langchain_documents
 from raccoon.synthesizer import OllamaSynthesizer
+from raccoon.dataloader import FixedDocumentLoader
 
 
-INPUT_PATH = Path("data/processed/documents.jsonl")
+INPUT_PATH = Path("data/processed/chunks")
 OUTPUT_PATH = Path("data/processed/generated_qa.jsonl")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 MODEL_ID = os.getenv("OLLAMA_MODEL", "gemma3:27b")
 
 
 def main() -> None:
-    documents = load_langchain_documents(INPUT_PATH)
+    parent = FixedDocumentLoader.load_data(INPUT_PATH / "parent_chunks.json")
+    child = FixedDocumentLoader.load_data(INPUT_PATH / "child_chunks.json")
     synthesizer = OllamaSynthesizer(
         ollama_url=OLLAMA_URL,
         model_id=MODEL_ID,

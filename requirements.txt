@@ -20,3 +20,4 @@ fpdf2
 langchain_experimental
 langchain_huggingface
 langchain_text_splitters
+rich
