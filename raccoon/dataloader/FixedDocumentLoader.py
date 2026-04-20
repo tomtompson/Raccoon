@@ -12,12 +12,13 @@ from langchain_community.document_loaders import (
     PyPDFLoader,
     Docx2txtLoader,
     TextLoader, 
+    UnstructuredMarkdownLoader
     )
 
 
 
 class FixedDocumentLoader(BaseLoader):
-    SUPPORTED_EXTENSIONS = {".txt", ".docx", ".pdf"}
+    SUPPORTED_EXTENSIONS = {".txt", ".docx", ".pdf", ".md"}
 
     def __init__(
         self,
@@ -38,6 +39,8 @@ class FixedDocumentLoader(BaseLoader):
         self.recursive = recursive
         self.silent_errors = silent_errors
         self.text_encoding = text_encoding
+        self.parent_data: list[Document] | None = None
+        self.child_data: list[Document] | None = None
 
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
@@ -61,8 +64,11 @@ class FixedDocumentLoader(BaseLoader):
         self.data = documents
         return documents
 
-    def preprocess_data(self, data: list[Document]) -> list[Document]:
-        return self._drop_empty_documents(self.text_splitter.split_documents(data))
+    def preprocess_data(self, data: list[Document]) -> tuple[list[Document], list[Document]]:
+        child_docs, parent_docs = self.chunk(data, self.chunk_size, self.chunk_overlap)
+        self.child_data = child_docs
+        self.parent_data = parent_docs
+        return child_docs, parent_docs
 
     def _load_single_file(self, file_path: Path) -> list[Document]:
         suffix = file_path.suffix.lower()
@@ -73,6 +79,8 @@ class FixedDocumentLoader(BaseLoader):
             loader = Docx2txtLoader(str(file_path), show_progress=True)
         elif suffix == ".txt":
             loader = TextLoader(str(file_path), encoding=self.text_encoding, show_progress=True)
+        elif suffix == ".md":
+            loader = loader = UnstructuredMarkdownLoader(str(file_path), mode="single")
         else:
             raise ValueError(f"Unsupported file type: {suffix}")
 
@@ -85,15 +93,22 @@ class FixedDocumentLoader(BaseLoader):
             {
                 "glob": "**/*.pdf" if self.recursive else "*.pdf",
                 "loader_cls": PyPDFLoader,
+                "loader_kwargs": {},
             },
             {
                 "glob": "**/*.docx" if self.recursive else "*.docx",
                 "loader_cls": Docx2txtLoader,
+                "loader_kwargs": {},
             },
             {
                 "glob": "**/*.txt" if self.recursive else "*.txt",
                 "loader_cls": TextLoader,
                 "loader_kwargs": {"encoding": self.text_encoding},
+            },
+            {
+                "glob": "**/*.md" if self.recursive else "*.md",
+                "loader_cls": UnstructuredMarkdownLoader,
+                "loader_kwargs": {"mode": "single"},
             },
         ]
 
@@ -102,16 +117,17 @@ class FixedDocumentLoader(BaseLoader):
                 str(directory_path),
                 glob=cfg["glob"],
                 loader_cls=cfg["loader_cls"],
-                loader_kwargs=cfg.get("loader_kwargs", {}),
+                loader_kwargs=cfg["loader_kwargs"],
                 silent_errors=self.silent_errors,
-                recursive=False,  
+                recursive=self.recursive,
                 show_progress=True,
             )
             documents.extend(loader.load())
 
         return documents
-    def _drop_empty_documents(self, documents:
-        list[Document]) -> list[Document]:
+    
+
+    def _drop_empty_documents(self, documents:list[Document]) -> list[Document]:
         return [
             doc
           for doc in documents

@@ -17,3 +17,6 @@ sqlalchemy
 testcontainers
 pytrec-eval-terrier
 fpdf2
+langchain_experimental
+langchain_huggingface
+langchain_text_splitters

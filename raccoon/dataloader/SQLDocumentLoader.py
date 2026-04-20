@@ -80,9 +80,7 @@ class SQLDocumentLoader(BaseLoader):
         return documents
 
     def preprocess_data(self, data: List[Document]) -> List[Document]:
-
-        return self.text_splitter.split_documents(data)
-    
-    def get_data(self) -> List[Document]:
-        data = self.load_data()
-        return self.preprocess_data(data)
+        child_docs, parent_docs = self.chunk(data, self.chunk_size, self.chunk_overlap)
+        self.child_data = child_docs
+        self.parent_data = parent_docs
+        return child_docs, parent_docs

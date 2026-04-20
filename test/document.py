@@ -1,23 +1,22 @@
 from pathlib import Path
 
 from raccoon.dataloader.FixedDocumentLoader import FixedDocumentLoader
-from raccoon.dataloader.utils import save_langchain_documents
 
 
 SOURCE_PATH = Path("data/raw")
-OUTPUT_PATH = Path("data/processed/documents.jsonl")
+OUTPUT_PATH = Path("data/processed/chunks/")
 
 
 def main() -> None:
     loader = FixedDocumentLoader(
         path=SOURCE_PATH,
-        chunk_size=1000,
+        chunk_size=4000,
         chunk_overlap=200,
     )
-    documents = loader.get_data()
-    save_langchain_documents(documents, OUTPUT_PATH)
+    documents_parents , documents_child = loader.get_data()
+    loader.save_chunked_documents(OUTPUT_PATH / "parent_chunks.json", OUTPUT_PATH / "child_chunks.json")
 
-    print(f"Saved {len(documents)} processed documents to {OUTPUT_PATH}")
+    print(f"Saved {len(documents_parents)} parent and {len(documents_child)} child documents to {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
