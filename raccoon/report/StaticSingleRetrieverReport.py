@@ -6,7 +6,7 @@ from typing import Any
 from fpdf import FPDF
 
 from raccoon.eval.retriever.RetrievelEval import RetrievelEval
-from raccoon.retriever.BaseRetriever import BaseRetriever
+from raccoon.custom_retriever.BaseRetriever import BaseRetriever
 
 
 class StaticSingleRetrieverReport:
