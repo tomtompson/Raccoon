@@ -7,7 +7,8 @@ from typing import Any
 from elastic_transport import ConnectionError as ElasticConnectionError
 from elasticsearch import ApiError, Elasticsearch
 
-from .BaseRetriever import BaseRetriever, DocumentRecord
+from .BaseRetriever import BaseRetriever
+from util.Reranker import Reranker
 
 
 class BM25Retriever(BaseRetriever):
@@ -19,96 +20,60 @@ class BM25Retriever(BaseRetriever):
         index_name: str | None = None,
         language: str = "english",
         config: dict[str, Any] | None = None,
+        corpus: dict | None = None,
+        queries: dict | None = None,
+        reranker: Reranker | None = None,
         content_field: str = "content",
         metadata_field: str = "metadata",
-        topk:int = 20,
+        topk: int = 20,
         refresh_on_write: bool = True,
         timeout: int = 120,
     ) -> None:
-        super().__init__(config=config)
-        self.topk = topk
-        if elasticsearch_url:
-            self.elasticsearch_url = elasticsearch_url.rstrip("/")
-        if index_name:
-            self.index_name = index_name
+        super().__init__(
+            config=config,
+            corpus=corpus,
+            queries=queries,
+            reranker=reranker,
+        )
+
+        self.elasticsearch_url = (
+            elasticsearch_url.rstrip("/") if elasticsearch_url else None
+        )
+        self.index_name = index_name
         self.language = language
         self.content_field = content_field
         self.metadata_field = metadata_field
+        self.topk = topk
         self.refresh_on_write = refresh_on_write
         self.timeout = timeout
-        if elasticsearch_url:
+        self.reranker = reranker
+
+        self.client: Elasticsearch | None = None
+        if self.elasticsearch_url:
             self.client = Elasticsearch(
                 hosts=[self.elasticsearch_url],
                 request_timeout=self.timeout,
             )
 
-    def _prepare_retrieval_state(self, documents: list[DocumentRecord]) -> None:
-        """Create the BM25 index and write every processed document into it."""
-        self._create_index_if_missing()
-        for document in documents:
-            payload = {
-                self.content_field: document["text"],
-                self.metadata_field: dict(document["metadata"]),
-            }
-            self.client.index(
-                index=self.index_name,
-                id=str(document["document_id"]),
-                document=payload,
-            )
+    def create_index(self, *args, **kwargs) -> None:
+        if not self.client:
+            raise ValueError("Elasticsearch client is not initialized.")
+        if not self.index_name:
+            raise ValueError("index_name must be set before creating the index.")
 
-        if self.refresh_on_write:
-            self.client.indices.refresh(index=self.index_name)
-
-        self.metrics.update(
-            {
-                "elasticsearch_url": self.elasticsearch_url,
-                "elasticsearch_index_name": self.index_name,
-                "elasticsearch_refresh_on_write": self.refresh_on_write,
-            }
-        )
-
-    def _search(self, query: str, top_k: int) -> list[dict[str, Any]]:
-        payload = {
-            "size": top_k,
-            "source": False,
-            "query": {
-                "match": {
-                    self.content_field: {
-                        "query": query,
-                    }
-                }
-            },
-        }
-        response = self.client.search(index=self.index_name, **payload)
-        hits = response.get("hits", {}).get("hits", [])
-        ranked_hits: list[dict[str, Any]] = []
-
-        for rank, hit in enumerate(hits, start=1):
-            source = hit.get("_source", {})
-            metadata = dict(source.get(self.metadata_field, {}))
-            document_id = str(metadata.get("document_id") or hit.get("_id", ""))
-            metadata["document_id"] = document_id
-            ranked_hits.append(
-                self._build_hit(
-                    document_id=document_id,
-                    score=float(hit.get("_score", 0.0)),
-                    rank=rank,
-                    content=str(source.get(self.content_field, "")),
-                    metadata=metadata,
-                )
-            )
-
-        return ranked_hits
-
-    def _create_index_if_missing(self) -> None:
-        """Create the BM25 index once and ignore the already-exists case."""
         try:
             self.client.indices.create(
                 index=self.index_name,
                 mappings={
                     "properties": {
-                        self.content_field: {"type": "text", "analyzer": self.language},
-                        self.metadata_field: {"type": "object", "enabled": True},
+                        self.content_field: {
+                            "type": "text",
+                            "analyzer": self.language,
+                        },
+                        self.metadata_field: {
+                            "type": "object",
+                            "enabled": True,
+                        },
                     }
                 },
             )
@@ -121,8 +86,89 @@ class BM25Retriever(BaseRetriever):
                 f"Unable to reach Elasticsearch at {self.elasticsearch_url}: {exc}"
             ) from exc
 
-    def _save_artifacts(self, path: Path) -> None:
-        """Persist BM25-specific connection and index settings."""
+    def index_corpous(self, *args, **kwargs) -> None:
+        if not self.client:
+            raise ValueError("Elasticsearch client is not initialized.")
+        if not self.index_name:
+            raise ValueError("index_name must be set before indexing.")
+        if not self.corpus:
+            raise ValueError("No corpus available to index.")
+
+        self.create_index()
+
+        for doc_id, doc in self.corpus.items():
+            text = doc.get("text", "")
+            metadata = {
+                k: v for k, v in doc.items()
+                if k != "text"
+            }
+            metadata["document_id"] = str(doc_id)
+
+            payload = {
+                self.content_field: text,
+                self.metadata_field: metadata,
+            }
+
+            self.client.index(
+                index=self.index_name,
+                id=str(doc_id),
+                document=payload,
+            )
+
+        if self.refresh_on_write:
+            self.client.indices.refresh(index=self.index_name)
+
+        self.is_ready = True
+
+    def encode(self, *args, **kwargs):
+        raise NotImplementedError("Lexical BM25 retriever does not support encode().")
+
+    def search(self, top_k: int | None = None, *args, **kwargs) -> dict:
+        if not self.client:
+            raise ValueError("Elasticsearch client is not initialized.")
+        if not self.index_name:
+            raise ValueError("index_name must be set before searching.")
+        if not self.queries:
+            raise ValueError("No queries available for searching.")
+
+        top_k = top_k or self.topk
+        results: dict[str, dict[str, float]] = {}
+
+        for query_id, query_text in self.queries.items():
+            payload = {
+                "size": top_k,
+                "_source": False,
+                "query": {
+                    "match": {
+                        self.content_field: {
+                            "query": query_text,
+                        }
+                    }
+                },
+            }
+
+            response = self.client.search(index=self.index_name, **payload)
+            hits = response.get("hits", {}).get("hits", [])
+
+            query_results: dict[str, float] = {}
+            for hit in hits:
+                doc_id = str(hit.get("_id"))
+                score = float(hit.get("_score", 0.0))
+                query_results[doc_id] = score
+
+            results[str(query_id)] = query_results
+
+        self.results = [
+            {"query_id": qid, "results": docs}
+            for qid, docs in results.items()
+        ]
+
+        return results
+
+    def save_artifacts(self, path: str | Path) -> None:
+        path = Path(path)
+        path.mkdir(parents=True, exist_ok=True)
+
         (path / "bm25_artifacts.json").write_text(
             json.dumps(
                 {
@@ -133,6 +179,7 @@ class BM25Retriever(BaseRetriever):
                     "metadata_field": self.metadata_field,
                     "refresh_on_write": self.refresh_on_write,
                     "timeout": self.timeout,
+                    "topk": self.topk,
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -140,9 +187,10 @@ class BM25Retriever(BaseRetriever):
             encoding="utf-8",
         )
 
-    def _load_artifacts(self, path: Path) -> None:
-        """Restore BM25-specific settings and recreate the Elasticsearch client."""
+    def load_artifacts(self, path: str | Path) -> None:
+        path = Path(path)
         artifact = json.loads((path / "bm25_artifacts.json").read_text(encoding="utf-8"))
+
         self.elasticsearch_url = artifact["elasticsearch_url"]
         self.index_name = artifact["index_name"]
         self.language = artifact.get("language", "english")
@@ -150,6 +198,8 @@ class BM25Retriever(BaseRetriever):
         self.metadata_field = artifact["metadata_field"]
         self.refresh_on_write = bool(artifact["refresh_on_write"])
         self.timeout = int(artifact["timeout"])
+        self.topk = int(artifact.get("topk", 20))
+
         self.client = Elasticsearch(
             hosts=[self.elasticsearch_url],
             request_timeout=self.timeout,
