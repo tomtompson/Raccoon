@@ -18,7 +18,7 @@ from collections import Counter, defaultdict
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 
-from raccoon.synthesizer.helper import (
+from raccoon.synthesizer.helper.helper import (
     _build_child_records_from_vectorstore,
     _load_existing_query_texts,
     _load_processed_parent_ids,
@@ -42,7 +42,7 @@ from raccoon.synthesizer.helper import (
 
 
 )
-from raccoon.synthesizer.SimpleBM25 import SimpleBM25
+from raccoon.synthesizer.helper.SimpleBM25 import SimpleBM25
 
 import logging
 from rich.logging import RichHandler
