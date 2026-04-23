@@ -8,7 +8,7 @@ from statistics import mean
 from time import perf_counter, time
 from typing import Any
 
-from util.Reranker import Reranker
+from raccoon.custom_retriever.util.Reranker import Reranker
 
 
 

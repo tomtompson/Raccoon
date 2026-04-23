@@ -1,3 +1,3 @@
-from .Reranker import Reranker
+from Reranker import Reranker
 
 __all__ = ["Reranker"]

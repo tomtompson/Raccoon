@@ -8,7 +8,7 @@ from elastic_transport import ConnectionError as ElasticConnectionError
 from elasticsearch import ApiError, Elasticsearch
 
 from .BaseRetriever import BaseRetriever
-from util.Reranker import Reranker
+from raccoon.custom_retriever.util.Reranker import Reranker
 
 
 class BM25Retriever(BaseRetriever):
@@ -43,7 +43,12 @@ class BM25Retriever(BaseRetriever):
         self.language = language
         self.content_field = content_field
         self.metadata_field = metadata_field
-        self.topk = topk
+        if isinstance(topk, int):
+            self.topk = topk
+        elif isinstance(topk, list) and topk:
+            self.topk = max(topk)
+        else:
+            raise ValueError("topk must be an int or non-empty list of ints")
         self.refresh_on_write = refresh_on_write
         self.timeout = timeout
         self.reranker = reranker
@@ -158,10 +163,10 @@ class BM25Retriever(BaseRetriever):
 
             results[str(query_id)] = query_results
 
-        self.results = [
-            {"query_id": qid, "results": docs}
-            for qid, docs in results.items()
-        ]
+        self.results = results
+
+        if self.reranker is not None:
+            self.reranker.rerank_with_transformers(self.corpus, self.queries, self.results)
 
         return results
 

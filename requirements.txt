@@ -22,3 +22,4 @@ langchain_huggingface
 langchain_text_splitters
 rich
 ollama
+beir
