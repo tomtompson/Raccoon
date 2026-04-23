@@ -5,16 +5,22 @@ description = "Benchmark utilities for RAG experiment"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 dependencies = [
+    "beir",
     "datasets>=4.7.0",
     "docx2txt>=0.9",
     "elasticsearch<9",
     "langchain>=1.2.12",
     "langchain-community>=0.4.1",
     "langchain-core>=1.2.19",
+    "langchain-experimental",
+    "langchain-huggingface",
+    "langchain-text-splitters",
+    "ollama",
     "openpyxl>=3.1.5",
     "pandas>=2.3.3",
     "pypdf>=5.9.0",
     "ragatouille>=0.0.9.post2",
+    "rich",
     "sentence-transformers>=5.3.0",
     "sqlalchemy>=2.0.48",
     "testcontainers>=4.14.2",
