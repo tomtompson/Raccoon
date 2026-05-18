@@ -23,3 +23,6 @@ langchain_text_splitters
 rich
 ollama
 beir
+faiss
+spacy
+igaph

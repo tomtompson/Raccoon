@@ -17,7 +17,7 @@ PASSAGE_PROMPT_NAME = "document"
 
 
 def main() -> None:
-    corpus, queries, qrels, name = load_local_beir_dataset("data/processed/rechtspraken/beir_realistic_TEST", "test")
+    corpus, queries, qrels, name = load_local_beir_dataset(INPUT_PATH, "test")
 
     retriever = DenseRetrieverSentenceBert(corpus=corpus, 
                                            queries=queries,
