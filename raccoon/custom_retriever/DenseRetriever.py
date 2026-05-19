@@ -4,6 +4,7 @@ import heapq
 import os
 from glob import glob
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 import torch
@@ -170,6 +171,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
     ) -> dict[str, dict[str, float]]:
         top_k = top_k or self.topk
 
+        encode_start = perf_counter()
         artifacts = self.encode(
             corpus=corpus,
             queries=queries,
@@ -178,12 +180,20 @@ class DenseRetrieverSentenceBert(BaseRetriever):
             query_filename=query_filename,
             corpus_filename=corpus_filename,
         )
+        encode_latency = perf_counter() - encode_start
 
+        search_start = perf_counter()
         q_np, q_ids = pickle_load(artifacts["query_embeddings_file"])
         q_emb = torch.as_tensor(q_np, dtype=torch.float32)
         shard_files = artifacts["corpus_embeddings_files"]
         if not shard_files:
             raise ValueError("No corpus embedding shards found")
+
+        embedding_size_bytes = os.path.getsize(artifacts["query_embeddings_file"])
+        embedding_size_bytes += sum(os.path.getsize(f) for f in shard_files)
+        query_count = len(q_ids)
+        corpus_count = 0
+        embedding_dim = int(q_emb.shape[1]) if q_emb.ndim > 1 else 0
 
         if use_faiss:
             try:
@@ -195,6 +205,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
             all_cids: list[str] = []
             for f in shard_files:
                 c_np, c_ids = pickle_load(f)
+                corpus_count += len(c_ids)
                 c_np = c_np.astype("float32")
                 if score_function == "cos_sim":
                     faiss.normalize_L2(c_np)
@@ -220,12 +231,26 @@ class DenseRetrieverSentenceBert(BaseRetriever):
                         break
                 out[str(qid)] = row
             self.results = out
+            self.metrics = self._build_metrics(
+                encode_latency=encode_latency,
+                search_latency=perf_counter() - search_start,
+                query_count=query_count,
+                corpus_count=corpus_count,
+                shard_count=len(shard_files),
+                embedding_dim=embedding_dim,
+                embedding_size_bytes=embedding_size_bytes,
+                top_k=top_k,
+                score_function=score_function,
+                use_faiss=use_faiss,
+                results=out,
+            )
             return out
 
         heaps: dict[str, list[tuple[float, str]]] = {str(qid): [] for qid in q_ids}
 
         for shard_file in shard_files:
             c_np, c_ids = pickle_load(shard_file)
+            corpus_count += len(c_ids)
             c_emb = torch.as_tensor(c_np, dtype=torch.float32)
 
             for qs in range(0, len(q_ids), self.query_chunk_size):
@@ -255,11 +280,79 @@ class DenseRetrieverSentenceBert(BaseRetriever):
             out[qid] = {cid: score for score, cid in best}
 
         self.results = out
+        self.metrics = self._build_metrics(
+            encode_latency=encode_latency,
+            search_latency=perf_counter() - search_start,
+            query_count=query_count,
+            corpus_count=corpus_count,
+            shard_count=len(shard_files),
+            embedding_dim=embedding_dim,
+            embedding_size_bytes=embedding_size_bytes,
+            top_k=top_k,
+            score_function=score_function,
+            use_faiss=use_faiss,
+            results=out,
+        )
 
         if self.reranker is not None:
             self.reranker.rerank_with_transformers(self.corpus, self.queries, self.results)
 
         return out
+
+    @staticmethod
+    def _build_metrics(
+        *,
+        encode_latency: float,
+        search_latency: float,
+        query_count: int,
+        corpus_count: int,
+        shard_count: int,
+        embedding_dim: int,
+        embedding_size_bytes: int,
+        top_k: int,
+        score_function: str,
+        use_faiss: bool,
+        results: dict[str, dict[str, float]],
+    ) -> dict[str, Any]:
+        per_query_latency = search_latency / query_count if query_count else 0.0
+        result_counts = [len(row) for row in results.values()]
+        scores = [score for row in results.values() for score in row.values()]
+        total_results = sum(result_counts)
+        avg_results = total_results / query_count if query_count else 0.0
+        avg_score = sum(scores) / len(scores) if scores else 0.0
+        return {
+            "index_time": {
+                "encoding": {
+                    "time_in_seconds": encode_latency,
+                    "documents": corpus_count,
+                    "queries": query_count,
+                    "shards": shard_count,
+                    "embedding_dim": embedding_dim,
+                    "size_in_bytes": embedding_size_bytes,
+                    "size_in_mb": embedding_size_bytes / (1024 * 1024),
+                    "docs_per_second": corpus_count / encode_latency if encode_latency else 0.0,
+                },
+            },
+            "query_time": {
+                "search": {
+                    "time_in_seconds": search_latency,
+                    "time_per_query_in_seconds": per_query_latency,
+                    "queries_per_second": query_count / search_latency if search_latency else 0.0,
+                    "queries": query_count,
+                    "top_k": top_k,
+                    "score_function": score_function,
+                    "use_faiss": use_faiss,
+                    "backend": "faiss" if use_faiss else "torch",
+                    "total_results": total_results,
+                    "avg_results_per_query": avg_results,
+                    "min_results_per_query": min(result_counts) if result_counts else 0,
+                    "max_results_per_query": max(result_counts) if result_counts else 0,
+                    "min_score": min(scores) if scores else 0.0,
+                    "max_score": max(scores) if scores else 0.0,
+                    "avg_score": avg_score,
+                },
+            },
+        }
 
     def create_index(self, *args, **kwargs) -> None:
         raise NotImplementedError("Dense retriever does not support create_index().")

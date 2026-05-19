@@ -50,10 +50,26 @@ class LinearRagRetriever(BaseRetriever):
          raise NotImplementedError("Linear retriever does not support encode().")
     
     def index_corpus(self, *args, **kwargs) -> None:
+        index_start = time.perf_counter()
+        model_load_start = time.perf_counter()
         self._load_embedding_model()
+        model_load_latency = time.perf_counter() - model_load_start
 
+        cache_load_start = time.perf_counter()
         if self._load_embedding_stores():
+            cache_load_latency = time.perf_counter() - cache_load_start
+            self.metrics["index_time"] = {
+                "indexing": self._index_metrics_payload(
+                    time_in_seconds=time.perf_counter() - index_start,
+                    cache_loaded=True,
+                    phase_times={
+                        "model_load_time_in_seconds": model_load_latency,
+                        "cache_load_time_in_seconds": cache_load_latency,
+                    },
+                )
+            }
             return
+        cache_load_latency = time.perf_counter() - cache_load_start
         
         print("Preparing passages...")
 
@@ -61,10 +77,13 @@ class LinearRagRetriever(BaseRetriever):
         self.doc_texts = {doc_id: join_title_text(self.corpus[doc_id]) for doc_id in self.doc_ids}
 
         print("Building local BM25 index...")
+        bm25_start = time.perf_counter()
         self.bm25 = SimpleBM25()
         self.bm25.build(self.doc_texts)
+        bm25_latency = time.perf_counter() - bm25_start
 
         print("Running spaCy concept extraction...")
+        concept_start = time.perf_counter()
         self.extractor = ConceptExtractor(
             self.config.get("spacy_model_name", "nl_core_news_sm"),
             use_gpu=self.use_gpu_for_spacy and torch.cuda.is_available(),
@@ -146,6 +165,7 @@ class LinearRagRetriever(BaseRetriever):
         for sent, concepts in sentence_to_concepts.items():
             for c in concepts:
                 concept_to_sentences[c].add(sent)
+        concept_latency = time.perf_counter() - concept_start
 
         # Unload spaCy from GPU before embedding phase.
         print("Unloading spaCy before embedding phase...")
@@ -175,6 +195,7 @@ class LinearRagRetriever(BaseRetriever):
         print("Num sentences: %d", len(sentence_texts))
 
         print("Encoding passages...")
+        embedding_start = time.perf_counter()
         self.passage_store.build(
             [(doc_id, self.doc_texts[doc_id]) for doc_id in self.doc_ids],
             prefix_text="passage",
@@ -191,6 +212,7 @@ class LinearRagRetriever(BaseRetriever):
             [(f"sent::{i}", sent) for i, sent in enumerate(sentence_texts)],
             prefix_text="sentence",
         )
+        embedding_latency = time.perf_counter() - embedding_start
 
         print("Reloading spaCy on CPU for query concept extraction...")
         self.extractor = ConceptExtractor(self.config.get("spacy_model_name", "nl_core_news_sm"), use_gpu=False,
@@ -240,18 +262,36 @@ class LinearRagRetriever(BaseRetriever):
 
         del concept_texts, sentence_texts
 
+        save_start = time.perf_counter()
         self._save_embedding_stores()
+        cache_save_latency = time.perf_counter() - save_start
+        self.metrics["index_time"] = {
+            "indexing": self._index_metrics_payload(
+                time_in_seconds=time.perf_counter() - index_start,
+                cache_loaded=False,
+                phase_times={
+                    "model_load_time_in_seconds": model_load_latency,
+                    "cache_lookup_time_in_seconds": cache_load_latency,
+                    "bm25_build_time_in_seconds": bm25_latency,
+                    "concept_extraction_time_in_seconds": concept_latency,
+                    "embedding_build_time_in_seconds": embedding_latency,
+                    "cache_save_time_in_seconds": cache_save_latency,
+                },
+            )
+        }
 
 
     def search(self, top_k: int, *args, **kwargs) -> dict:
+        search_start = time.perf_counter()
         results = {}
         items = list(self.queries.items())
         total_queries = len(items)
+        resolved_top_k = top_k or self.config.get("retrieval_top_k", 100)
 
         for i, (qid, query) in enumerate(items, start=1):
             ranked_doc_ids, ranked_scores, _, _ = self._search_once(
                 query,
-                top_k=top_k or self.config.get("retrieval_top_k", 100)
+                top_k=resolved_top_k
             )
             results[qid] = {
                 doc_id: float(score)
@@ -261,6 +301,33 @@ class LinearRagRetriever(BaseRetriever):
             if i == 1 or i % 10 == 0 or i == total_queries:
                 print(f"Retrieving queries: {i}/{total_queries}")
         self.results = results
+        search_latency = time.perf_counter() - search_start
+        result_counts = [len(row) for row in results.values()]
+        scores = [score for row in results.values() for score in row.values()]
+        total_results = sum(result_counts)
+        self.metrics["query_time"] = {
+            "search": {
+                "time_in_seconds": search_latency,
+                "time_per_query_in_seconds": search_latency / total_queries if total_queries else 0.0,
+                "queries_per_second": total_queries / search_latency if search_latency else 0.0,
+                "queries": total_queries,
+                "top_k": resolved_top_k,
+                "dense_candidate_k": self.config.get("dense_candidate_k", 500),
+                "bm25_candidate_k": self.config.get("bm25_candidate_k", 500),
+                "graph_candidate_k": self.config.get("graph_candidate_k", 500),
+                "dense_rrf_weight": self.config.get("dense_rrf_weight", 1),
+                "bm25_rrf_weight": self.config.get("bm25_rrf_weight", 0.35),
+                "graph_rrf_weight": self.config.get("graph_rrf_weight", 0.75),
+                "rrf_k": self.config.get("rrf_k", 60),
+                "total_results": total_results,
+                "avg_results_per_query": total_results / total_queries if total_queries else 0.0,
+                "min_results_per_query": min(result_counts) if result_counts else 0,
+                "max_results_per_query": max(result_counts) if result_counts else 0,
+                "min_score": min(scores) if scores else 0.0,
+                "max_score": max(scores) if scores else 0.0,
+                "avg_score": sum(scores) / len(scores) if scores else 0.0,
+            },
+        }
         return results
 
     def _search_once(self, question: str, top_k: Optional[int] = None) -> Tuple[List[str], List[float], Any, Tuple[str,float]]:
@@ -615,6 +682,56 @@ class LinearRagRetriever(BaseRetriever):
 
         os.makedirs(path, exist_ok=True)
         return path
+
+    def _cache_size_bytes(self) -> int:
+        path = self._get_cache_path()
+        total_size = 0
+        for root, _, files in os.walk(path):
+            for file_name in files:
+                file_path = os.path.join(root, file_name)
+                if os.path.exists(file_path):
+                    total_size += os.path.getsize(file_path)
+        return total_size
+
+    def _index_metrics_payload(
+        self,
+        *,
+        time_in_seconds: float,
+        cache_loaded: bool,
+        phase_times: Dict[str, float] | None = None,
+    ) -> Dict[str, Any]:
+        passage_count = len(getattr(self, "doc_ids", []) or [])
+        concept_count = len(getattr(getattr(self, "concept_store", None), "ids", []) or [])
+        sentence_count = len(getattr(getattr(self, "sentence_store", None), "ids", []) or [])
+        passage_store = getattr(self, "passage_store", None)
+        passage_index = getattr(passage_store, "index", None)
+        embedding_dim = int(getattr(passage_store, "dim", 0) or getattr(passage_index, "d", 0) or 0)
+        cache_size_bytes = self._cache_size_bytes()
+        passage_concept_links = sum(len(v) for v in getattr(self, "passage_id_to_concept_ids", {}).values())
+        concept_sentence_links = sum(len(v) for v in getattr(self, "concept_id_to_sentence_ids", {}).values())
+        sentence_passage_links = sum(len(v) for v in getattr(self, "sentence_id_to_passage_ids", {}).values())
+
+        return {
+            "time_in_seconds": time_in_seconds,
+            "documents": passage_count,
+            "concepts": concept_count,
+            "sentences": sentence_count,
+            "concepts_per_document": concept_count / passage_count if passage_count else 0.0,
+            "sentences_per_document": sentence_count / passage_count if passage_count else 0.0,
+            "passage_concept_links": passage_concept_links,
+            "concept_sentence_links": concept_sentence_links,
+            "sentence_passage_links": sentence_passage_links,
+            "embedding_dim": embedding_dim,
+            "size_in_bytes": cache_size_bytes,
+            "size_in_mb": cache_size_bytes / (1024 * 1024),
+            "docs_per_second": passage_count / time_in_seconds if time_in_seconds else 0.0,
+            "cache_loaded": cache_loaded,
+            "cache_path": self._get_cache_path(),
+            "embedding_model": self.config.get("embedding_model_name", "snowflake/snowflake-arctic-embed-l-v2.0"),
+            "spacy_model": self.config.get("spacy_model_name", "nl_core_news_sm"),
+            "backend": "faiss",
+            "phase_times": phase_times or {},
+        }
 
     def _save_embedding_stores(self):
         path = self._get_cache_path()
