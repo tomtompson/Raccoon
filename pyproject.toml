@@ -30,6 +30,8 @@ dependencies = [
     "voyager>=2.1.0",
     "pytrec-eval-terrier",
     "fpdf2>=2.8.7",
+    "spacy>=3.8.14",
+    "igraph>=1.0.0",
 ]
 
 [[tool.setuptools.packages.find]]

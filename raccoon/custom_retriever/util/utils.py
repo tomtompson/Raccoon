@@ -59,3 +59,12 @@ def min_max_normalize(x: np.ndarray) -> np.ndarray:
     if mx - mn < 1e-12:
         return np.ones_like(x)
     return (x - mn) / (mx - mn)
+
+def pretty_print_dict(d):
+    pretty_dict = ''  
+    
+    for k, v in d.items():
+        pretty_dict += f'{k}: \n'
+        for value in v:
+            pretty_dict += f'    {value}: {v[value]}\n'
+    return pretty_dict

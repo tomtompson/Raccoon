@@ -9,6 +9,7 @@ from elasticsearch import ApiError, Elasticsearch
 
 from .BaseRetriever import BaseRetriever
 from raccoon.custom_retriever.util.Reranker import Reranker
+from raccoon.custom_retriever.util.utils import pretty_print_dict
 
 
 class BM25Retriever(BaseRetriever):
@@ -100,7 +101,6 @@ class BM25Retriever(BaseRetriever):
             raise ValueError("No corpus available to index.")
 
         self.create_index()
-
         for doc_id, doc in self.corpus.items():
             text = doc.get("text", "")
             metadata = {
@@ -164,6 +164,19 @@ class BM25Retriever(BaseRetriever):
             results[str(query_id)] = query_results
 
         self.results = results
+
+        stats = self.client.indices.stats(index=self.index_name)
+
+        self.metrics = {
+            "index_time": {
+                "docs": stats["indices"][self.index_name]["primaries"]["docs"],
+                "index": stats["indices"][self.index_name]["primaries"]["indexing"],
+            },
+            "query_time": {
+                "search": stats["indices"][self.index_name]["primaries"]["search"],
+            }
+        }
+
 
         if self.reranker is not None:
             self.reranker.rerank_with_transformers(self.corpus, self.queries, self.results)

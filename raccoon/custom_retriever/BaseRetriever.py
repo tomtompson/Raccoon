@@ -30,6 +30,7 @@ class BaseRetriever(ABC):
         self.results: list[dict[str, Any]] = []
         self.is_ready = False
         self.reranker = reranker
+        self.metrics = {}
 
     @abstractmethod
     def create_index(self, *args, **kwargs) -> None:

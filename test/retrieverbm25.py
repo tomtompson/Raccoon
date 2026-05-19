@@ -26,11 +26,12 @@ def main() -> None:
             queries = queries,
             topk=TOP_K,
         )
-        retriever.index_corpous()
+        retriever.index_corpus()
         retriever.search()
         eval = EvaluateRetrieval()
         eval_results = eval.evaluate(qrels=qrels, results=retriever.results, k_values=[1, 3, 5, 10, 50],)
         print(eval_results)
+        print(retriever.metrics)
 
 
 
