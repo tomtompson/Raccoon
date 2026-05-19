@@ -21,6 +21,7 @@ from .util.utils import (join_title_text, min_max_normalize, rrf_fuse)
 
 
 class LinearRagRetriever(BaseRetriever):
+    retriever_type = "linear"
     def __init__(
         self,
         config: Dict[str, Any] | None = None,
@@ -42,7 +43,7 @@ class LinearRagRetriever(BaseRetriever):
         self.sentence_store = None
         self.bm25 = None
         self.use_gpu_for_spacy = True
-
+        super().__init__(config, corpus, queries, reranker)
     def create_index(self, *args, **kwargs) -> None:
         raise NotImplementedError("Linear retriever does not support create_index().")
     def encode(self, *args, **kwargs):

@@ -36,7 +36,7 @@ class BaseRetriever(ABC):
         pass
 
     @abstractmethod
-    def index_corpous(self, *args, **kwargs) -> None:
+    def index_corpus(self, *args, **kwargs) -> None:
         pass
 
     @abstractmethod

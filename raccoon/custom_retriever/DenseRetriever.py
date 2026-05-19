@@ -264,5 +264,5 @@ class DenseRetrieverSentenceBert(BaseRetriever):
     def create_index(self, *args, **kwargs) -> None:
         raise NotImplementedError("Dense retriever does not support create_index().")
 
-    def index_corpous(self, *args, **kwargs) -> None:
+    def index_corpus(self, *args, **kwargs) -> None:
         raise NotImplementedError("Dense retriever does not support index_corpous().")

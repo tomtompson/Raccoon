@@ -91,7 +91,7 @@ class BM25Retriever(BaseRetriever):
                 f"Unable to reach Elasticsearch at {self.elasticsearch_url}: {exc}"
             ) from exc
 
-    def index_corpous(self, *args, **kwargs) -> None:
+    def index_corpus(self, *args, **kwargs) -> None:
         if not self.client:
             raise ValueError("Elasticsearch client is not initialized.")
         if not self.index_name:
