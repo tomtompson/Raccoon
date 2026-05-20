@@ -1,4 +1,5 @@
-from .StaticSingleRetrieverReport import StaticSingleRetrieverReport
+from .StaticRetrieverReport import StaticRetrieverReport
+
 __all__ = [
-    "StaticSingleRetrieverReport",
+    "StaticRetrieverReport",
 ]

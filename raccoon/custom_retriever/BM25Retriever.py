@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from elastic_transport import ConnectionError as ElasticConnectionError
@@ -9,7 +10,6 @@ from elasticsearch import ApiError, Elasticsearch
 
 from .BaseRetriever import BaseRetriever
 from raccoon.custom_retriever.util.Reranker import Reranker
-from raccoon.custom_retriever.util.utils import pretty_print_dict
 
 
 class BM25Retriever(BaseRetriever):
@@ -100,6 +100,7 @@ class BM25Retriever(BaseRetriever):
         if not self.corpus:
             raise ValueError("No corpus available to index.")
 
+        index_start = perf_counter()
         self.create_index()
         for doc_id, doc in self.corpus.items():
             text = doc.get("text", "")
@@ -124,6 +125,16 @@ class BM25Retriever(BaseRetriever):
             self.client.indices.refresh(index=self.index_name)
 
         self.is_ready = True
+        index_latency = perf_counter() - index_start
+        document_count = len(self.corpus)
+        self.metrics["index_time"] = {
+            "indexing": {
+                "time_in_seconds": index_latency,
+                "documents": document_count,
+                "docs_per_second": document_count / index_latency if index_latency else 0.0,
+                "backend": "elasticsearch",
+            },
+        }
 
     def encode(self, *args, **kwargs):
         raise NotImplementedError("Lexical BM25 retriever does not support encode().")
@@ -138,6 +149,7 @@ class BM25Retriever(BaseRetriever):
 
         top_k = top_k or self.topk
         results: dict[str, dict[str, float]] = {}
+        search_start = perf_counter()
 
         for query_id, query_text in self.queries.items():
             payload = {
@@ -164,22 +176,33 @@ class BM25Retriever(BaseRetriever):
             results[str(query_id)] = query_results
 
         self.results = results
+        search_latency = perf_counter() - search_start
+        query_count = len(self.queries)
+        result_counts = [len(row) for row in results.values()]
+        total_results = sum(result_counts)
+        scores = [score for row in results.values() for score in row.values()]
 
-        stats = self.client.indices.stats(index=self.index_name)
-
-        self.metrics = {
-            "index_time": {
-                "docs": stats["indices"][self.index_name]["primaries"]["docs"],
-                "index": stats["indices"][self.index_name]["primaries"]["indexing"],
+        self.metrics["query_time"] = {
+            "search": {
+                "time_in_seconds": search_latency,
+                "time_per_query_in_seconds": search_latency / query_count if query_count else 0.0,
+                "queries_per_second": query_count / search_latency if search_latency else 0.0,
+                "queries": query_count,
+                "top_k": top_k,
+                "backend": "elasticsearch",
+                "total_results": total_results,
+                "avg_results_per_query": total_results / query_count if query_count else 0.0,
+                "min_results_per_query": min(result_counts) if result_counts else 0,
+                "max_results_per_query": max(result_counts) if result_counts else 0,
+                "min_score": min(scores) if scores else 0.0,
+                "max_score": max(scores) if scores else 0.0,
+                "avg_score": sum(scores) / len(scores) if scores else 0.0,
             },
-            "query_time": {
-                "search": stats["indices"][self.index_name]["primaries"]["search"],
-            }
         }
 
 
         if self.reranker is not None:
-            self.reranker.rerank_with_transformers(self.corpus, self.queries, self.results)
+            self.store_rerank_results()
 
         return results
 

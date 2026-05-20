@@ -31,6 +31,10 @@ class BaseRetriever(ABC):
         self.is_ready = False
         self.reranker = reranker
         self.metrics = {}
+        self.retrieval_metrics = {}
+        self.rerank_results = {}
+        self.rerank_metrics = {}
+        self.rerank_retrieval_metrics = {}
 
     @abstractmethod
     def create_index(self, *args, **kwargs) -> None:
@@ -47,5 +51,17 @@ class BaseRetriever(ABC):
     @abstractmethod
     def search(self, top_k: int, *args, **kwargs) -> dict:
         pass
+
+    def store_rerank_results(self) -> dict:
+        if self.reranker is None:
+            return {}
+
+        self.rerank_results = self.reranker.rerank_with_transformers(
+            self.corpus,
+            self.queries,
+            self.results,
+        )
+        self.rerank_metrics = getattr(self.reranker, "rerank_metrics", {}) or {}
+        return self.rerank_results
 
     

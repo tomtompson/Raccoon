@@ -17,7 +17,7 @@ class Reranker():
         self.model_id = model_id
         self.top_k = top_k
         self.batch_size = batch_size
-        self.max_lenght = max_lenght
+        self.max_length = max_lenght
         self.device = device
         self._load_reranker()
 
@@ -59,9 +59,9 @@ class Reranker():
             title = doc.get("title", "")
             text = doc.get("text", "")
             if title and text:
-                doc_text_cache[doc_id] = f"{title}\n{text}"
+                doc_text_cache[str(doc_id)] = f"{title}\n{text}"
             else:
-                doc_text_cache[doc_id] = title if title else text
+                doc_text_cache[str(doc_id)] = title if title else text
 
         use_cuda = torch.cuda.is_available() and str(self.device).startswith("cuda")
 
@@ -78,13 +78,18 @@ class Reranker():
 
                 query_start = time.perf_counter()
 
-                query_text = queries[query_id]
+                query_text = queries.get(query_id, queries.get(str(query_id), ""))
+                if not query_text:
+                    try:
+                        query_text = queries.get(int(query_id), "")
+                    except (TypeError, ValueError):
+                        query_text = ""
                 doc_scores = results[query_id]
 
-                top_docs = sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
+                top_docs = sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)[:self.top_k]
                 doc_ids = [doc_id for doc_id, _ in top_docs]
 
-                pairs = [[query_text, doc_text_cache[doc_id]] for doc_id in doc_ids]
+                pairs = [[query_text, doc_text_cache.get(str(doc_id), "")] for doc_id in doc_ids]
                 scores = []
 
                 for i in range(0, len(pairs), self.batch_size):
@@ -152,28 +157,60 @@ class Reranker():
 
         total_time = time.perf_counter() - wall_start
 
+        avg_time_query = (
+            sum(per_query_times) / len(per_query_times)
+            if per_query_times else 0.0
+        )
+
+        avg_time_batch = (
+            sum(per_batch_times) / len(per_batch_times)
+            if per_batch_times else 0.0
+        )
+
+        pairs_per_sec = (
+            total_pairs / total_time
+            if total_time > 0 else 0.0
+        )
+
+        tokens_per_sec = (
+            total_input_tokens / total_time
+            if total_time > 0 and total_input_tokens > 0 else 0.0
+        )
+
+        peak_mem = None
+        if use_cuda:
+            peak_mem = (
+                torch.cuda.max_memory_allocated(self.device)
+                / (1024 ** 3)
+            )
+
         print("\nReranking stats")
         print(f"Total queries: {len(query_ids)}")
         print(f"Total pairs: {total_pairs}")
         print(f"Total batches: {total_batches}")
         print(f"Total input tokens: {total_input_tokens}")
         print(f"Total wall time: {total_time:.2f}s")
-
-        if per_query_times:
-            print(f"Avg time/query: {sum(per_query_times) / len(per_query_times):.4f}s")
-
-        if per_batch_times:
-            print(f"Avg time/batch: {sum(per_batch_times) / len(per_batch_times):.4f}s")
-
-        if total_pairs > 0:
-            print(f"Pairs/sec: {total_pairs / total_time:.2f}")
-
-        if total_input_tokens > 0:
-            print(f"Tokens/sec: {total_input_tokens / total_time:.2f}")
+        print(f"Avg time/query: {avg_time_query:.4f}s")
+        print(f"Avg time/batch: {avg_time_batch:.4f}s")
+        print(f"Pairs/sec: {pairs_per_sec:.2f}")
+        print(f"Tokens/sec: {tokens_per_sec:.2f}")
 
         if use_cuda:
-            peak_mem = torch.cuda.max_memory_allocated(self.device) / (1024 ** 3)
             print(f"Peak GPU memory: {peak_mem:.2f} GB")
-            
+
         self.results = rerank_results
+
+        self.rerank_metrics = {
+            "total_queries": len(query_ids),
+            "total_pairs": total_pairs,
+            "total_batches": total_batches,
+            "total_input_tokens": total_input_tokens,
+            "total_wall_time_sec": round(total_time, 4),
+            "avg_time_query_sec": round(avg_time_query, 4),
+            "avg_time_batch_sec": round(avg_time_batch, 4),
+            "pairs_per_sec": round(pairs_per_sec, 2),
+            "tokens_per_sec": round(tokens_per_sec, 2),
+            "peak_gpu_memory_gb": round(peak_mem, 2) if peak_mem is not None else None,
+        }
+
         return rerank_results

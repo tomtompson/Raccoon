@@ -328,6 +328,8 @@ class LinearRagRetriever(BaseRetriever):
                 "avg_score": sum(scores) / len(scores) if scores else 0.0,
             },
         }
+        if self.reranker is not None:
+            self.store_rerank_results()
         return results
 
     def _search_once(self, question: str, top_k: Optional[int] = None) -> Tuple[List[str], List[float], Any, Tuple[str,float]]:

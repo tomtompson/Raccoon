@@ -244,6 +244,8 @@ class DenseRetrieverSentenceBert(BaseRetriever):
                 use_faiss=use_faiss,
                 results=out,
             )
+            if self.reranker is not None:
+                self.store_rerank_results()
             return out
 
         heaps: dict[str, list[tuple[float, str]]] = {str(qid): [] for qid in q_ids}
@@ -295,7 +297,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
         )
 
         if self.reranker is not None:
-            self.reranker.rerank_with_transformers(self.corpus, self.queries, self.results)
+            self.store_rerank_results()
 
         return out
 
