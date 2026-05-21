@@ -1,4 +1,5 @@
 import spacy
+from spacy.cli import download
 from typing import Optional, Tuple, Dict, List, Set, Any
 from collections import defaultdict
 
@@ -22,8 +23,13 @@ class ConceptExtractor:
                 print("spaCy GPU unavailable; using CPU")
         else:
             print("Using spaCy on CPU")
+        try:
+            self.nlp = spacy.load(model_name)
+        except OSError as exc:
+            print(f"Error loading spaCy model: {exc}, downloading instead")
+            download(model_name)
+            self.nlp = spacy.load(model_name)
 
-        self.nlp = spacy.load(model_name)
 
         if "sentencizer" not in self.nlp.pipe_names and "parser" not in self.nlp.pipe_names:
             self.nlp.add_pipe("sentencizer")

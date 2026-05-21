@@ -9,7 +9,6 @@ class HybridRetriever(BaseRetriever):
         super().__init__(config, corpus, queries, reranker)
         self.retrievers = retrievers or []
         self.k = k
-
     def create_index(self, *args, **kwargs) -> None:
         self.index_corpus(*args, **kwargs)
 
@@ -25,7 +24,7 @@ class HybridRetriever(BaseRetriever):
             method(*args, **kwargs)
         except NotImplementedError:
             return
-
+    # TODO: THIS AINT IT CHIEF, THIS IS JUST A QUICK FIX TO GET THE HYBRID RETRIEVER WORKING. BUT IS NOT REPRESENT THE INDEX OF EACH METHOD
     def index_corpus(self, *args, **kwargs) -> None:
         index_start = perf_counter()
         for retriever, _weight in self.retrievers:
@@ -49,6 +48,8 @@ class HybridRetriever(BaseRetriever):
         for retriever, weight in self.retrievers:
             if isinstance(retriever, dict):
                 results = retriever
+            elif hasattr(retriever, 'retrieval_metrics') and retriever.retrieval_metrics:
+                results = retriever.results
             else:
                 results = retriever.search(top_k=top_k)
 

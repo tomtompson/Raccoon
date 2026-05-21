@@ -47,3 +47,9 @@ class FaissEmbeddingStore:
                 print(f"Embedding {prefix_text}s: {done}/{total}")
 
             del batch, texts, emb
+
+    def search(self, query_embedding: np.ndarray, top_k: int) -> Tuple[np.ndarray, np.ndarray]:
+        q = np.asarray(query_embedding, dtype=np.float32).reshape(1, -1)
+        top_k = min(top_k, len(self.ids))
+        scores, indices = self.index.search(q, top_k)
+        return indices[0], scores[0]

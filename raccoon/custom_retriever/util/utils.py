@@ -1,3 +1,5 @@
+from pathlib import Path
+import json
 import numpy as np
 import os
 import torch
@@ -68,3 +70,45 @@ def pretty_print_dict(d):
         for value in v:
             pretty_dict += f'    {value}: {v[value]}\n'
     return pretty_dict
+
+
+def deep_merge_dict(base: dict, new: dict) -> dict:
+    for key, value in new.items():
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+            deep_merge_dict(base[key], value)
+        else:
+            base[key] = value
+    return base
+
+
+def append_results(file_path: str | Path, name: str, *args) -> None:
+    file_path = Path(file_path)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if file_path.exists():
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except json.JSONDecodeError:
+            print(f"Warning: {file_path} was invalid JSON. Resetting it.")
+            data = {}
+    else:
+        data = {}
+
+    if name not in data:
+        data[name] = {}
+
+    for arg in args:
+        if isinstance(arg, dict):
+            deep_merge_dict(data[name], arg)
+        else:
+            print(f"Warning: Argument {arg} is not a dictionary and will be skipped.")
+
+    tmp_file = file_path.with_suffix(file_path.suffix + ".tmp")
+
+    with open(tmp_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
+    os.replace(tmp_file, file_path)
+
+    print(f"Results appended to {file_path}")

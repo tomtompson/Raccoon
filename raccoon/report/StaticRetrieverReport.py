@@ -65,12 +65,11 @@ class StaticRetrieverReport:
         story: list[Any] = []
         logo = Path("raccoon/report/images/logo.png")
         if logo.exists():
-            story += [Image(str(logo), width=22 * mm, height=22 * mm), Spacer(1, 4)]
+            story += [Image(str(logo), width=50 * mm, height=50 * mm)]
 
         story += [
             Paragraph(self._esc(title), styles["Title"]),
             Paragraph(datetime.datetime.now().strftime("Generated %Y-%m-%d %H:%M"), styles["MutedCenter"]),
-            Spacer(1, 14),
         ]
 
         if not retrievers:
@@ -159,38 +158,66 @@ class StaticRetrieverReport:
             for retriever in retrievers
         ]
         metric_names = sorted({name for _, metrics in metric_maps for name in metrics})
+
         if metric_names:
-            chart_metric = config.get("comparison_metric") or metric_names[0]
-            chart_values = [(name, metrics[chart_metric]) for name, metrics in metric_maps if chart_metric in metrics]
-            story += [
-                Paragraph(self._esc(f"{chart_metric} comparison"), styles["Subsection"]),
-                self._bar_chart(chart_values),
-                Spacer(1, 8),
-            ]
+            chart_metrics = config.get("comparison_metric") or [metric_names[0]]
+            if isinstance(chart_metrics, str):
+                chart_metrics = [chart_metrics]
+
+            for chart_metric in chart_metrics:
+                chart_values = [
+                    (name, metrics[chart_metric])
+                    for name, metrics in metric_maps
+                    if chart_metric in metrics
+                ]
+
+                if chart_values:
+                    story += [
+                        Paragraph(self._esc(f"{chart_metric} comparison"), styles["Subsection"]),
+                        self._bar_chart(chart_values),
+                        Spacer(1, 8),
+                    ]
 
         rerank_metric_maps = [
             (self._name(retriever), dict(self._metric_rows(getattr(retriever, "rerank_retrieval_metrics", None), config)))
             for retriever in retrievers
         ]
         rerank_metric_names = sorted({name for _, metrics in rerank_metric_maps for name in metrics})
+
         if rerank_metric_names:
-            chart_metric = config.get("rerank_comparison_metric") or config.get("comparison_metric") or rerank_metric_names[0]
-            chart_values = [(name, metrics[chart_metric]) for name, metrics in rerank_metric_maps if chart_metric in metrics]
-            if chart_values:
-                story += [
-                    Paragraph(self._esc(f"Reranked {chart_metric} comparison"), styles["Subsection"]),
-                    self._bar_chart(chart_values),
-                    Spacer(1, 8),
+            chart_metrics = (
+                config.get("rerank_comparison_metric")
+                or config.get("comparison_metric")
+                or [rerank_metric_names[0]]
+            )
+
+            if isinstance(chart_metrics, str):
+                chart_metrics = [chart_metrics]
+
+            for chart_metric in chart_metrics:
+                chart_values = [
+                    (name, metrics[chart_metric])
+                    for name, metrics in rerank_metric_maps
+                    if chart_metric in metrics
                 ]
+
+                if chart_values:
+                    story += [
+                        Paragraph(self._esc(f"Reranked {chart_metric} comparison"), styles["Subsection"]),
+                        self._bar_chart(chart_values),
+                        Spacer(1, 8),
+                    ]
 
         index_values = self._runtime_values(retrievers, "index_time")
         query_values = self._runtime_values(retrievers, "query_time")
+
         if index_values:
             story += [
                 Paragraph("Index time comparison (seconds)", styles["Subsection"]),
                 self._bar_chart(index_values),
                 Spacer(1, 8),
             ]
+
         if query_values:
             story += [
                 Paragraph("Query time comparison (seconds)", styles["Subsection"]),
@@ -199,6 +226,7 @@ class StaticRetrieverReport:
             ]
 
         rerank_values = self._rerank_values(retrievers, "total_wall_time_sec")
+
         if rerank_values:
             story += [
                 Paragraph("Rerank time comparison (seconds)", styles["Subsection"]),

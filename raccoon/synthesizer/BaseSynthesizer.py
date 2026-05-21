@@ -18,7 +18,7 @@ from collections import Counter, defaultdict
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 
-from raccoon.synthesizer.helper.helper import (
+from .helper.helper import (
     _build_child_records_from_vectorstore,
     _load_existing_query_texts,
     _load_processed_parent_ids,
@@ -38,11 +38,9 @@ from raccoon.synthesizer.helper.helper import (
     _sample_same_topic_negatives_via_overlap,
     _rrf_fuse,
     _estimate_judge_tokens,
-    _build_faiss_index,
+    _build_faiss_index)
 
-
-)
-from raccoon.synthesizer.helper.SimpleBM25 import SimpleBM25
+from .helper.SimpleBM25 import SimpleBM25
 
 import logging
 from rich.logging import RichHandler
