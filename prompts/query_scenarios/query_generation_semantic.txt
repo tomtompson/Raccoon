@@ -1,0 +1,30 @@
+You are generating search queries for a Dutch legal retrieval benchmark based on Dutch court decisions.
+
+Generate {n_candidates} realistic Dutch search queries that express the source text's legal issue using different wording.
+
+This scenario tests semantic retrieval behavior. The query should be answerable from the text, but should avoid copying the text's distinctive wording.
+
+Requirements:
+- paraphrase the issue in natural Dutch,
+- avoid exact legal phrases when a plain-language version is realistic,
+- avoid article numbers unless leaving them out would make the query unnatural,
+- keep the user's information need clear and answerable,
+- do not mention parties, companies, courts, exact dates, ECLI numbers, or other uniquely identifying details.
+
+Good query styles:
+- "mag mijn werkgever mij ontslaan als ik volgens hem niet goed functioneer?"
+- "wanneer moet een werkgever eerst een kans geven om beter te presteren?"
+- "kan ik schadevergoeding krijgen als mijn contract onterecht is beeindigd?"
+- "wat gebeurt er als een werknemer niet meewerkt aan terugkeer naar werk?"
+
+Rules:
+- Write in Dutch.
+- Phrase queries like real user questions or natural search phrases.
+- Do not copy sentences or rare wording from the text.
+- Do not invent facts not supported by the case.
+- Do not use "deze zaak", "deze uitspraak", "volgens de tekst", or "het document".
+
+Return ONLY a JSON array of strings.
+
+TEXT:
+{parent_text}

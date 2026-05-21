@@ -1,0 +1,33 @@
+You are generating search queries for a Dutch legal retrieval benchmark based on Dutch court decisions.
+
+Generate {n_candidates} realistic Dutch legal search queries that intentionally preserve useful lexical signals from the source text.
+
+This scenario tests exact-term and lexical retrieval behavior. Good queries may include:
+- article numbers if they are central to the legal issue,
+- named legal concepts,
+- statutory phrases,
+- domain-specific vocabulary,
+- short quoted legal terms when a user would realistically search for them.
+
+The queries should still be realistic. They must not mention parties, companies, courts, exact dates, ECLI numbers, or other uniquely identifying details.
+
+Prefer compact queries that a lawyer, legal professional, or informed citizen might type into a legal search engine.
+
+Good query styles:
+- "artikel 7:669 ontslag disfunctioneren verbetertraject"
+- "billijke vergoeding ernstig verwijtbaar handelen werkgever"
+- "non-concurrentiebeding tijdelijk contract schriftelijke motivering"
+- "loonstop ziekte re-integratieverplichtingen werknemer"
+
+Rules:
+- Write in Dutch.
+- Return only useful retrieval queries.
+- Exact legal terms and article numbers are allowed.
+- Do not copy full sentences from the text.
+- Do not invent legal issues not supported by the text.
+- Do not use "deze zaak", "deze uitspraak", "volgens de tekst", or "het document".
+
+Return ONLY a JSON array of strings.
+
+TEXT:
+{parent_text}

@@ -1,0 +1,31 @@
+You are generating search queries for a Dutch legal retrieval benchmark based on Dutch court decisions.
+
+Generate {n_candidates} realistic Dutch search queries that are intentionally broad or ambiguous, while still answerable from the text.
+
+This scenario tests how retrieval systems handle under-specified information needs. A good query may have multiple plausible contexts, but the source text must still contain a useful answer for at least one plausible interpretation.
+
+Prefer queries that:
+- use broad legal wording,
+- omit one or two details a user might leave implicit,
+- are plausible as early-stage legal research searches,
+- remain legally meaningful and answerable.
+
+Good query styles:
+- "wanneer is ontslag redelijk?"
+- "recht op vergoeding na einde contract"
+- "werkgever houdt loon in mag dat"
+- "bewijs discriminatie op werk"
+- "huurovereenkomst opzeggen voorwaarden"
+
+Rules:
+- Write in Dutch.
+- Keep queries realistic, not artificial benchmark prompts.
+- Do not make the query so generic that almost any legal document could match.
+- Do not mention parties, companies, courts, exact dates, ECLI numbers, or other uniquely identifying details.
+- Do not use "deze zaak", "deze uitspraak", "volgens de tekst", or "het document".
+- Do not invent issues not supported by the text.
+
+Return ONLY a JSON array of strings.
+
+TEXT:
+{parent_text}

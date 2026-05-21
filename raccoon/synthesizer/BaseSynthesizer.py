@@ -434,7 +434,8 @@ class BaseSynthesizer(ABC):
                         random_negative_k : int, min_score_to_keep_in_qrels : int, max_qrels_per_query : int,
                         include_source_parent_children : bool, parent_text_limit_prompt : int, candidate_text_limit_prompt : int, max_estimated_tokens : int,
                         overwrite_corpus : int, max_parents : int, random_seed : int, target_queries_per_source: int,
-                        shuffle_parents : bool, reranker_id : str, rerank_pool_size : int, rerank_keep_top_k : int, ):
+                        shuffle_parents : bool, reranker_id : str, rerank_pool_size : int, rerank_keep_top_k : int,
+                        allow_copy_like_queries: bool = False, min_query_tokens: int = 3, max_query_tokens: int = 20, ):
         
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -579,16 +580,16 @@ class BaseSynthesizer(ABC):
                     if normalized_query in seen_query_texts:
                         log.query(f"[red]Rejected duplicate query [/red]| parent_id={parent_id} | query={query}")
                         continue
-                    if _looks_too_short(query, min_tokens=3):
+                    if _looks_too_short(query, min_tokens=min_query_tokens):
                         log.query(f"[red]Rejected too short query [/red]| parent_id={parent_id} | query={query}")
                         continue
-                    if _looks_too_long(query, max_tokens=20):
+                    if _looks_too_long(query, max_tokens=max_query_tokens):
                         log.query(f"[red]Rejected too long query [/red]| parent_id={parent_id} | query={query}")
                         continue
                     if _looks_artificial(query):
                         log.query(f"[red]Rejected artificial query [/red]| parent_id={parent_id} | query={query}")
                         continue
-                    if _query_is_too_copy_like(query, parent_text):
+                    if not allow_copy_like_queries and _query_is_too_copy_like(query, parent_text):
                         log.query(f"[red]Rejected copy-like query [/red]| parent_id={parent_id} | query={query}")
                         continue
 
@@ -605,13 +606,14 @@ class BaseSynthesizer(ABC):
 
                     reasons = []
 
-                    if not qv.get("keep", False):
+                    copied_from_text = qv.get("copied_from_text", False)
+                    if not qv.get("keep", False) and not (allow_copy_like_queries and copied_from_text):
                         reasons.append("keep")
                     if not qv.get("grounded_in_text", False):
                         reasons.append("grounded_in_text")
                     if not qv.get("realistic_user_query", False):
                         reasons.append("realistic_user_query")
-                    if qv.get("copied_from_text", False):
+                    if copied_from_text and not allow_copy_like_queries:
                         reasons.append("copied_from_text")
                     if qv.get("too_case_specific", False):
                         reasons.append("too_case_specific")
