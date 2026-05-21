@@ -47,7 +47,10 @@ class HybridRetriever(BaseRetriever):
         search_start = perf_counter()
 
         for retriever, weight in self.retrievers:
-            results = retriever.search(top_k=top_k)
+            if isinstance(retriever, dict):
+                results = retriever
+            else:
+                results = retriever.search(top_k=top_k)
 
             for query_id, doc_scores in results.items():
                 ranking = list(doc_scores.keys())

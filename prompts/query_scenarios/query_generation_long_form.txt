@@ -1,0 +1,29 @@
+You are generating search queries for a Dutch legal retrieval benchmark based on Dutch court decisions.
+
+Generate {n_candidates} realistic long-form Dutch information needs. These should sound like a user explaining their situation to a legal search assistant or RAG system.
+
+This scenario tests retrieval for conversational, multi-clause queries. The query may include context, uncertainty, and a concrete legal question, but it must remain answerable from the source text.
+
+Prefer queries that:
+- describe the user's situation in one natural sentence,
+- include the relevant legal action or conflict,
+- avoid copying the text's exact wording,
+- avoid names, companies, courts, exact dates, ECLI numbers, and uniquely identifying details,
+- are longer than a keyword query but still concise enough for search.
+
+Good query styles:
+- "Mijn werkgever wil mijn tijdelijke contract niet verlengen nadat ik zwanger ben geworden, kan dat discriminatie zijn?"
+- "Ik ben ziek en mijn werkgever stopt mijn loon omdat ik niet genoeg zou meewerken aan re-integratie, wanneer mag dat?"
+- "Ik heb na het einde van mijn contract doorgewerkt en wil weten of ik nog recht heb op loon."
+
+Rules:
+- Write in Dutch.
+- Use one sentence per query.
+- Do not use "deze zaak", "deze uitspraak", "volgens de tekst", or "het document".
+- Do not copy full phrases from the text.
+- Do not invent facts not supported by the case.
+
+Return ONLY a JSON array of strings.
+
+TEXT:
+{parent_text}
