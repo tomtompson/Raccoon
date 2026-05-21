@@ -52,6 +52,11 @@ class BaseRetriever(ABC):
     def search(self, top_k: int, *args, **kwargs) -> dict:
         pass
 
+    def add_retrieval_result(self, result: tuple[dict[str, Any]]) -> None:
+        for d in result:
+            metric = list(d.keys())[0].split("@")[0].lower()
+            self.retrieval_metrics[metric] = d
+            
     def store_rerank_results(self) -> dict:
         if self.reranker is None:
             return {}

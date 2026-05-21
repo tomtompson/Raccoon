@@ -9,7 +9,7 @@ from langchain_core.documents import Document
 
 from .BaseSynthesizer import BaseSynthesizer
 from raccoon.dataloader import BaseLoader
-from raccoon.synthesizer.helper import (
+from .helper.helper import (
     _extract_json_array,
     _extract_json_object,
     _safe_int,

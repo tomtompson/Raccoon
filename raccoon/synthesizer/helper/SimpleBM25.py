@@ -2,7 +2,7 @@ from typing import List, Tuple
 from collections import Counter
 import math
 
-from raccoon.synthesizer.helper import _tokenize
+from raccoon.synthesizer.helper.helper import _tokenize
 
 class SimpleBM25:
     def __init__(self, docs: List[dict], k1: float = 1.5, b: float = 0.75):

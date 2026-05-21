@@ -679,7 +679,7 @@ class LinearRagRetriever(BaseRetriever):
         safe_dataset = str(dataset_name).replace("/", "-").replace(" ", "-")
         safe_model = str(model_name).split("/")[-1]
 
-        cache_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+        cache_root = self.config.get("cache_path", os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache") )
         path = os.path.join(cache_root, f"{safe_model}-{safe_dataset}-{cache_suffix}")
 
         os.makedirs(path, exist_ok=True)
