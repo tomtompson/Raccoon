@@ -22,11 +22,11 @@ OUTPUT_PATH_CHUNKS = Path("data/processed/chunks_recht")
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
 
 QUERY_PROMPT_PATH = "/prompts/query_scenarios/query_generation_ambiguous.txt"
-OUTPUT_PATH_SYNTH = "data/processed/rechtspraken/beir_realistic_TEST"
+OUTPUT_PATH_SYNTH = "data/processed/rechtspraken/beir_600"
 
-RESULT_FILE_PATH = "data/processed/rechtspraken/beir_realistic_TEST/eval_results.json"
+RESULT_FILE_PATH = "data/processed/rechtspraken/beir_600/eval_results.json"
 
-INPUT_PATH = Path("data/processed/rechtspraken/beir_realistic_TEST")
+INPUT_PATH = Path("data/processed/rechtspraken/beir_600")
 
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
 TOP_K = 20
@@ -39,7 +39,7 @@ MAX_LENGHT = 206
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 QUERY_PROMPT_NAME = "query"
 PASSAGE_PROMPT_NAME = "document"
-ENCODE_PATH = "data/processed/rechtspraken/beir_realistic_TEST/encode/"
+ENCODE_PATH = "data/processed/rechtspraken/beir_600/encode/"
 
 RETRIEVERS = []
 
@@ -180,51 +180,57 @@ def main() -> None:
     #======================================================
 
     config = {
-        "embedding_model_name": "snowflake/snowflake-arctic-embed-l-v2.0",
-        "spacy_model_name": "nl_core_news_sm",
-        "dataset_name": name,
-        "cache_path": "data/processed/rechtspraken/beir_realistic_TEST/linear_rag_cache",
+    "embedding_model_name": "snowflake/snowflake-arctic-embed-l-v2.0",
+    "spacy_model_name": "nl_core_news_sm",
+    "dataset_name": name,
+    "cache_path": "data/processed/rechtspraken/beir_600/linear_rag_cache",
 
-        "device": "cuda" if torch.cuda.is_available() else "cpu",
-        "max_seq_length": 256,
+    "device": "cuda",
+    "max_seq_length": 256,
 
-        "retrieval_top_k": TOP_K,
-        "embed_batch_size": 192,
-        "ner_batch_size": 64,
+    # Match DenseRetriever more closely
+    "embed_batch_size": 128,
+    "ner_batch_size": 64,
 
-        "dense_candidate_k": 500,
-        "bm25_candidate_k": 500,
-        "graph_candidate_k": 500,
+    "retrieval_top_k": TOP_K,
 
-        "local_graph_dense_seed_k": 200,
-        "local_graph_bm25_seed_k": 200,
-        "local_graph_sentence_seed_k": 80,
-        "local_graph_concept_seed_k": 80,
+    # Candidate pools
+    "dense_candidate_k": 500,
+    "bm25_candidate_k": 500,
+    "graph_candidate_k": 500,
 
-        "dense_rrf_weight": 0.0,
-        "bm25_rrf_weight": 0.0,
-        "graph_rrf_weight": 1.0,
-        "rrf_k": 60,
+    # Local graph seeds
+    "local_graph_dense_seed_k": 200,
+    "local_graph_bm25_seed_k": 200,
+    "local_graph_sentence_seed_k": 50,
+    "local_graph_concept_seed_k": 50,
 
-        "min_concept_len": 4,
-        "max_concept_words": 6,
-        "min_concept_df": 1,
-        "max_concept_df_ratio": 0.30,
+    # Fusion
+    "dense_rrf_weight": 0.0,
+    "bm25_rrf_weight": 0.0,
+    "graph_rrf_weight": 1.0,
+    "rrf_k": 60,
 
-        "stop_concept": [
-            "artikel", "rechtbank", "zaak", "zaken", "eiser", "gedaagde",
-            "verzoeker", "verweerster", "werknemer", "werkgever", "partij",
-            "partijen", "overeenkomst", "arbeidsovereenkomst", "datum",
-            "januari", "februari", "maart", "april", "mei", "juni",
-            "juli", "augustus", "september", "oktober", "november",
-            "december", "lid", "grond", "beroep", "besluit", "uitspraak",
-            "rechter", "kantonrechter", "proces", "procedure", "verzoek",
-            "vordering",
-        ],
+    # Much stricter concept filtering
+    "min_concept_len": 4,
+    "max_concept_words": 4,
+    "min_concept_df": 2,
+    "max_concept_df_ratio": 0.10,
 
-        "ppr_damping": 0.6,
-        "ppr_max_result_docs": 500,
-    }
+    "stop_concept": [
+        "artikel", "rechtbank", "zaak", "zaken", "eiser", "gedaagde",
+        "verzoeker", "verweerster", "werknemer", "werkgever", "partij",
+        "partijen", "overeenkomst", "arbeidsovereenkomst", "datum",
+        "januari", "februari", "maart", "april", "mei", "juni",
+        "juli", "augustus", "september", "oktober", "november",
+        "december", "lid", "grond", "beroep", "besluit", "uitspraak",
+        "rechter", "kantonrechter", "proces", "procedure", "verzoek",
+        "vordering",
+    ],
+
+    "ppr_damping": 0.6,
+    "ppr_max_result_docs": 500,
+}
 
     retriever_linear = LinearRagRetriever(
         config=config,

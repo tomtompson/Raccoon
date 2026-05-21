@@ -2,8 +2,7 @@ from .BaseRetriever import BaseRetriever
 from raccoon.custom_retriever.util.Reranker import Reranker
 from typing import Any, Dict, Set, List, Optional, Tuple
 from raccoon.custom_retriever.util.SimpleBM25 import SimpleBM25
-from raccoon.custom_retriever.util.Faiss import FaissEmbeddingStore
-from raccoon.custom_retriever.util.InMemoryEmbeddingStore import InMemoryEmbeddingStore
+from raccoon.custom_retriever.util.InMemoryEmbeddingStore import EmbeddingStore
 from raccoon.custom_retriever.util.ConceptExtractor import ConceptExtractor
 from collections import defaultdict, Counter
 from sentence_transformers import SentenceTransformer
@@ -103,7 +102,7 @@ class LinearRagRetriever(BaseRetriever):
         total_start_time = time.perf_counter()
 
         ner_batch_size = self.config.get("ner_batch_size", 64)
-
+        next_print = 1000
         for start in range(0, total, ner_batch_size):
             batch_start_time = time.perf_counter()
             batch = items[start:start + ner_batch_size]
@@ -126,12 +125,14 @@ class LinearRagRetriever(BaseRetriever):
                         concept_to_sentences[concept].add(sent)
 
             done = min(start + ner_batch_size, total)
-            if done % 1000 == 0 or done == total:
+
+            if done >= next_print or done == total:
                 print(
                     f"Concept extraction: {done}/{total}, "
                     f"batch time={time.perf_counter() - batch_start_time:.3f}s, "
                     f"total time={time.perf_counter() - total_start_time:.3f}s"
                 )
+                next_print += 1000
 
             del batch, batch_doc_ids, batch_texts, docs
 
@@ -175,19 +176,22 @@ class LinearRagRetriever(BaseRetriever):
         concept_texts = sorted(valid_concepts)
         sentence_texts = sorted(all_sentences)
 
-        self.passage_store = FaissEmbeddingStore(
+        self.passage_store = EmbeddingStore(
             self.embedding_model,
-            self.config.get("embed_batch_size", 192)
+            self.config.get("embed_batch_size", 192),
+            backend="faiss",
         )
 
-        self.concept_store = InMemoryEmbeddingStore(
+        self.concept_store = EmbeddingStore(
             self.embedding_model,
-            self.config.get("embed_batch_size", 192)
+            self.config.get("embed_batch_size", 192),
+            backend="memory",
         )
 
-        self.sentence_store = InMemoryEmbeddingStore(
+        self.sentence_store = EmbeddingStore(
             self.embedding_model,
-            self.config.get("embed_batch_size", 192)
+            self.config.get("embed_batch_size", 192),
+            backend="memory",
         )
 
         print("Num docs     : %d", len(self.doc_ids))
@@ -640,20 +644,34 @@ class LinearRagRetriever(BaseRetriever):
         return sorted(doc_scores, key=lambda x: x[1], reverse=True)[:top_k], g
 
     def _load_embedding_model(self):
-        if self.embedding_model is None:
-            device = self.config.get("device", "cuda" if torch.cuda.is_available() else "cpu")
-            model_name = self.config.get("embedding_model_name", "snowflake/snowflake-arctic-embed-l-v2.0")
+        if self.embedding_model is not None:
+            return
 
-            print(f"Loading embedding model on {device}...")
+        device = self.config.get(
+            "device",
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
 
-            self.embedding_model = SentenceTransformer(
-                model_name,
-                device=str(device),
-            )
+        model_name = self.config.get(
+            "embedding_model_name",
+            "snowflake/snowflake-arctic-embed-l-v2.0"
+        )
 
-            max_seq_length = self.config.get("max_seq_length", None)
-            if hasattr(self.embedding_model, "max_seq_length") and max_seq_length:
-                self.embedding_model.max_seq_length = max_seq_length
+        print(f"Loading embedding model on {device}...")
+
+        self.embedding_model = SentenceTransformer(
+            model_name,
+            device=str(device),
+            trust_remote_code=True,
+        )
+
+        max_seq_length = self.config.get("max_seq_length")
+        if max_seq_length:
+            self.embedding_model.max_seq_length = max_seq_length
+
+        if str(device).startswith("cuda"):
+            self.embedding_model = self.embedding_model.half()
+            torch.backends.cuda.matmul.allow_tf32 = True
 
     def _unload_embedding_model(self):
         if self.embedding_model is not None:
@@ -670,6 +688,11 @@ class LinearRagRetriever(BaseRetriever):
         cache_config = {
             "dataset_name": dataset_name,
             "dense_model": model_name,
+            "max_seq_length": self.config.get("max_seq_length"),
+            "min_concept_len": self.config.get("min_concept_len"),
+            "max_concept_words": self.config.get("max_concept_words"),
+            "min_concept_df": self.config.get("min_concept_df"),
+            "max_concept_df_ratio": self.config.get("max_concept_df_ratio"),
         }
 
         cache_suffix = hashlib.md5(
@@ -830,9 +853,10 @@ class LinearRagRetriever(BaseRetriever):
             with open(os.path.join(path, "passage_store_meta.pkl"), "rb") as f:
                 passage_meta = pickle.load(f)
 
-            self.passage_store = FaissEmbeddingStore(
+            self.passage_store = EmbeddingStore(
                 self.embedding_model,
-                self.config.get("embed_batch_size",192)
+                self.config.get("embed_batch_size", 128),
+                backend="faiss",
             )
 
             self.passage_store.index = passage_index
