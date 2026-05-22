@@ -48,6 +48,11 @@ class DenseRetrieverSentenceBert(BaseRetriever):
         if not model_id:
             raise ValueError("model_id is required for DenseRetrieverSentenceBert")
 
+        self.model_id = model_id
+        self.max_length = max_length
+        self.device = device
+        self.query_prompt_name = query_prompt_name
+        self.passage_prompt_name = passage_prompt_name
         self.batch_size = batch_size
         self.corpus_chunk_size = corpus_chunk_size
         self.query_chunk_size = query_chunk_size
@@ -66,6 +71,8 @@ class DenseRetrieverSentenceBert(BaseRetriever):
         )
         if max_length is not None:
             self.sentence_model.max_seq_length = max_length
+        self.max_length = getattr(self.sentence_model, "max_seq_length", self.max_length)
+        self.device = str(device or getattr(self.sentence_model, "device", ""))
 
     @staticmethod
     def _sorted_corpus(corpus: dict[str, dict[str, Any]]) -> tuple[list[str], list[dict[str, Any]]]:

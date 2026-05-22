@@ -76,6 +76,7 @@ class StaticRetrieverReport:
             story.append(Paragraph("No retriever results were provided.", styles["Body"]))
             return story
 
+        story += self._corpus_summary(retrievers, styles)
         story += self._comparison(retrievers, styles, config)
 
         for retriever in retrievers:
@@ -107,6 +108,7 @@ class StaticRetrieverReport:
         rerank_retrieval_metrics = getattr(retriever, "rerank_retrieval_metrics", None)
 
         story = [Paragraph(self._esc(self._name(retriever)), styles["Section"])]
+        story += self._table("Configuration", self._config_rows(retriever, config), styles)
         story += self._table("Result Summary", self._summary(results), styles)
         story += self._table("Retrieval Metrics", self._metric_rows(retrieval_metrics, config), styles)
         story += self._table("Retriever Metrics", self._flatten(metrics)[: self._int(config.get("metric_rows", 12), 12)], styles)
@@ -147,80 +149,91 @@ class StaticRetrieverReport:
         )
         return [Paragraph(self._esc(title), styles["Subsection"]), table, Spacer(1, 8)]
 
+    def _corpus_summary(self, retrievers: list[Any], styles: dict[str, Any]) -> list[Any]:
+        rows = self._corpus_rows(retrievers)
+        if not rows:
+            return []
+        return [Paragraph("Corpus Summary", styles["Section"])] + self._table("Corpus and Queries", rows, styles)
+
+    def _corpus_rows(self, retrievers: list[Any]) -> list[tuple[str, Any]]:
+        source = next(
+            (
+                retriever
+                for retriever in retrievers
+                if isinstance(getattr(retriever, "corpus", None), dict)
+                and bool(getattr(retriever, "corpus", None))
+            ),
+            None,
+        ) or next(
+            (
+                retriever
+                for retriever in retrievers
+                if isinstance(getattr(retriever, "queries", None), dict)
+                and bool(getattr(retriever, "queries", None))
+            ),
+            None,
+        )
+        if source is None:
+            return []
+
+        corpus = getattr(source, "corpus", {}) or {}
+        queries = getattr(source, "queries", {}) or {}
+        rows: list[tuple[str, Any]] = []
+
+        if isinstance(corpus, dict) and corpus:
+            texts = [self._doc_text(doc) for doc in corpus.values()]
+            lengths = [len(text) for text in texts]
+            titled = sum(1 for doc in corpus.values() if isinstance(doc, dict) and str(doc.get("title") or "").strip())
+            rows += [
+                ("Documents", len(corpus)),
+                ("Documents with title", titled),
+                ("Avg document chars", mean(lengths) if lengths else 0),
+                ("Min document chars", min(lengths) if lengths else 0),
+                ("Max document chars", max(lengths) if lengths else 0),
+            ]
+
+        if isinstance(queries, dict) and queries:
+            query_texts = [self._query_text(query, str(query_id)) for query_id, query in queries.items()]
+            query_lengths = [len(text) for text in query_texts]
+            rows += [
+                ("Queries", len(queries)),
+                ("Avg query chars", mean(query_lengths) if query_lengths else 0),
+                ("Min query chars", min(query_lengths) if query_lengths else 0),
+                ("Max query chars", max(query_lengths) if query_lengths else 0),
+            ]
+
+        return rows
+
     def _comparison(self, retrievers: list[Any], styles: dict[str, Any], config: dict[str, Any]) -> list[Any]:
         if len(retrievers) < 2:
             return []
 
         story = [Paragraph("Retriever Comparison", styles["Section"])]
 
-        metric_maps = [
-            (self._name(retriever), dict(self._metric_rows(getattr(retriever, "retrieval_metrics", None), config)))
-            for retriever in retrievers
-        ]
-        metric_names = sorted({name for _, metrics in metric_maps for name in metrics})
+        metric_maps = self._metric_maps(retrievers, "retrieval_metrics", config)
+        chart_metrics = self._selected_metrics(metric_maps, config.get("comparison_metric"))
+        story += self._metric_comparison("Retrieval Metrics", metric_maps, chart_metrics, styles)
 
-        if metric_names:
-            chart_metrics = config.get("comparison_metric") or [metric_names[0]]
-            if isinstance(chart_metrics, str):
-                chart_metrics = [chart_metrics]
-
-            for chart_metric in chart_metrics:
-                chart_values = [
-                    (name, metrics[chart_metric])
-                    for name, metrics in metric_maps
-                    if chart_metric in metrics
-                ]
-
-                if chart_values:
-                    story += [
-                        Paragraph(self._esc(f"{chart_metric} comparison"), styles["Subsection"]),
-                        self._bar_chart(chart_values),
-                        Spacer(1, 8),
-                    ]
-
-        rerank_metric_maps = [
-            (self._name(retriever), dict(self._metric_rows(getattr(retriever, "rerank_retrieval_metrics", None), config)))
-            for retriever in retrievers
-        ]
-        rerank_metric_names = sorted({name for _, metrics in rerank_metric_maps for name in metrics})
-
-        if rerank_metric_names:
-            chart_metrics = (
-                config.get("rerank_comparison_metric")
-                or config.get("comparison_metric")
-                or [rerank_metric_names[0]]
-            )
-
-            if isinstance(chart_metrics, str):
-                chart_metrics = [chart_metrics]
-
-            for chart_metric in chart_metrics:
-                chart_values = [
-                    (name, metrics[chart_metric])
-                    for name, metrics in rerank_metric_maps
-                    if chart_metric in metrics
-                ]
-
-                if chart_values:
-                    story += [
-                        Paragraph(self._esc(f"Reranked {chart_metric} comparison"), styles["Subsection"]),
-                        self._bar_chart(chart_values),
-                        Spacer(1, 8),
-                    ]
+        rerank_metric_maps = self._metric_maps(retrievers, "rerank_retrieval_metrics", config)
+        rerank_chart_metrics = self._selected_metrics(
+            rerank_metric_maps,
+            config.get("rerank_comparison_metric") or config.get("comparison_metric"),
+        )
+        story += self._metric_comparison("Rerank Retrieval Metrics", rerank_metric_maps, rerank_chart_metrics, styles)
 
         index_values = self._runtime_values(retrievers, "index_time")
         query_values = self._runtime_values(retrievers, "query_time")
 
         if index_values:
             story += [
-                Paragraph("Index time comparison (seconds)", styles["Subsection"]),
+                Paragraph("Index Time (seconds)", styles["Subsection"]),
                 self._bar_chart(index_values),
                 Spacer(1, 8),
             ]
 
         if query_values:
             story += [
-                Paragraph("Query time comparison (seconds)", styles["Subsection"]),
+                Paragraph("Query Time (seconds)", styles["Subsection"]),
                 self._bar_chart(query_values),
                 Spacer(1, 8),
             ]
@@ -229,12 +242,143 @@ class StaticRetrieverReport:
 
         if rerank_values:
             story += [
-                Paragraph("Rerank time comparison (seconds)", styles["Subsection"]),
+                Paragraph("Rerank Time (seconds)", styles["Subsection"]),
                 self._bar_chart(rerank_values),
                 Spacer(1, 8),
             ]
 
         return story + [Spacer(1, 4)] if len(story) > 1 else []
+
+    def _metric_maps(
+        self,
+        retrievers: list[Any],
+        attribute: str,
+        config: dict[str, Any],
+    ) -> list[tuple[str, dict[str, float]]]:
+        return [
+            (self._name(retriever), dict(self._metric_rows(getattr(retriever, attribute, None), config)))
+            for retriever in retrievers
+        ]
+
+    def _selected_metrics(
+        self,
+        metric_maps: list[tuple[str, dict[str, float]]],
+        requested: Any,
+    ) -> list[str]:
+        available = self._ordered_metric_names({name for _, metrics in metric_maps for name in metrics})
+        if not available:
+            return []
+
+        selected = self._as_list(requested)
+        if not selected:
+            selected = [metric for metric in ("NDCG@10", "Recall@10") if metric in available]
+        if not selected:
+            selected = available[:4]
+
+        return [metric for metric in selected if metric in available]
+
+    def _metric_comparison(
+        self,
+        title: str,
+        metric_maps: list[tuple[str, dict[str, float]]],
+        metrics: list[str],
+        styles: dict[str, Any],
+    ) -> list[Any]:
+        if not metrics or not any(any(metric in values for metric in metrics) for _, values in metric_maps):
+            return []
+
+        return [
+            Paragraph(self._esc(title), styles["Subsection"]),
+            self._comparison_table(metric_maps, metrics, styles),
+            Spacer(1, 6),
+            self._grouped_bar_chart(metric_maps, metrics),
+            Spacer(1, 10),
+        ]
+
+    def _comparison_table(
+        self,
+        metric_maps: list[tuple[str, dict[str, float]]],
+        metrics: list[str],
+        styles: dict[str, Any],
+    ) -> Table:
+        metric_count = max(1, len(metrics))
+        table = Table(
+            [
+                [Paragraph("Retriever", styles["HeaderCell"])]
+                + [Paragraph(self._esc(metric), styles["HeaderCell"]) for metric in metrics],
+                *[
+                    [Paragraph(self._esc(self._truncate(name, 36)), styles["Cell"])]
+                    + [Paragraph(self._esc(self._format(values.get(metric))), styles["Cell"]) for metric in metrics]
+                    for name, values in metric_maps
+                    if any(metric in values for metric in metrics)
+                ],
+            ],
+            colWidths=[58 * mm] + [(112 / metric_count) * mm for _ in metrics],
+            hAlign="LEFT",
+        )
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("BACKGROUND", (0, 1), (0, -1), colors.HexColor("#F3F4F6")),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        return table
+
+    def _grouped_bar_chart(self, metric_maps: list[tuple[str, dict[str, float]]], metrics: list[str]) -> Drawing:
+        width = 170 * mm
+        label_width = 46 * mm
+        metric_width = 25 * mm
+        bar_start = label_width + metric_width
+        bar_width = 72 * mm
+        row_height = 9
+        group_height = 11 + row_height * len(metrics)
+        rows = [(name, values) for name, values in metric_maps if any(metric in values for metric in metrics)]
+        height = max(32, 8 + group_height * len(rows))
+        drawing = Drawing(width, height)
+        max_value = max(
+            [float(values[metric]) for _, values in rows for metric in metrics if metric in values]
+            + [1.0]
+        )
+        palette = [
+            colors.HexColor("#2563EB"),
+            colors.HexColor("#059669"),
+            colors.HexColor("#D97706"),
+            colors.HexColor("#7C3AED"),
+            colors.HexColor("#DC2626"),
+            colors.HexColor("#0891B2"),
+        ]
+
+        y = height - 12
+        for name, values in rows:
+            drawing.add(String(0, y, self._truncate(name, 28), fontSize=7, fillColor=colors.HexColor("#111827")))
+            for index, metric in enumerate(metrics):
+                value = self._number(values.get(metric))
+                metric_y = y - 10 - row_height * index
+                drawing.add(String(label_width, metric_y + 1, self._truncate(metric, 14), fontSize=6, fillColor=colors.HexColor("#374151")))
+                drawing.add(Rect(bar_start, metric_y, bar_width, 5, fillColor=colors.HexColor("#E5E7EB"), strokeColor=None))
+                if value is not None:
+                    fill_width = bar_width * max(0.0, value / max_value)
+                    drawing.add(Rect(bar_start, metric_y, fill_width, 5, fillColor=palette[index % len(palette)], strokeColor=None))
+                    drawing.add(
+                        String(
+                            bar_start + bar_width + 4,
+                            metric_y + 1,
+                            self._format(value),
+                            fontSize=6,
+                            fillColor=colors.HexColor("#111827"),
+                        )
+                    )
+            y -= group_height
+        return drawing
 
     def _runtime_values(self, retrievers: list[Any], metric_key: str) -> list[tuple[str, float]]:
         values = []
@@ -277,7 +421,7 @@ class StaticRetrieverReport:
         for name, value in values:
             drawing.add(String(0, y, self._truncate(name, 24), fontSize=7, fillColor=colors.HexColor("#111827")))
             drawing.add(Rect(label_width, y - 3, bar_width, 6, fillColor=colors.HexColor("#E5E7EB"), strokeColor=None))
-            drawing.add(Rect(label_width, y - 3, bar_width * (value / max_value), 6, fillColor=colors.HexColor("#2563EB"), strokeColor=None))
+            drawing.add(Rect(label_width, y - 3, bar_width * max(0.0, value / max_value), 6, fillColor=colors.HexColor("#2563EB"), strokeColor=None))
             drawing.add(String(label_width + bar_width + 5, y, self._format(value), fontSize=7, fillColor=colors.HexColor("#111827")))
             y -= row_height
         return drawing
@@ -406,6 +550,58 @@ class StaticRetrieverReport:
                 rows.append((label, item))
         return rows
 
+    def _config_rows(self, retriever: Any, config: dict[str, Any]) -> list[tuple[str, Any]]:
+        rows: list[tuple[str, Any]] = []
+        seen: set[str] = set()
+
+        def add(label: str, value: Any, keep_none: bool = False) -> None:
+            if value is None and not keep_none:
+                return
+            if not self._is_scalar(value):
+                return
+            key = label.lower()
+            if key in seen:
+                return
+            seen.add(key)
+            rows.append((label, value))
+
+        add("retriever_type", getattr(retriever, "retriever_type", type(retriever).__name__))
+        for label, value in self._flatten(getattr(retriever, "config", {}) or {}):
+            add(label, value, keep_none=True)
+
+        for label in (
+            "topk",
+            "k",
+            "language",
+            "index_name",
+            "content_field",
+            "metadata_field",
+            "refresh_on_write",
+            "timeout",
+            "model_id",
+            "max_length",
+            "device",
+            "query_prompt_name",
+            "passage_prompt_name",
+            "normalize_embeddings",
+            "batch_size",
+            "corpus_chunk_size",
+            "query_chunk_size",
+            "show_progress_bar",
+            "use_gpu_for_spacy",
+        ):
+            add(label, getattr(retriever, label, None))
+
+        retrievers = getattr(retriever, "retrievers", None)
+        if isinstance(retrievers, list) and retrievers:
+            parts = []
+            for child, weight in retrievers:
+                child_name = getattr(child, "retriever_type", type(child).__name__) if not isinstance(child, dict) else "dict"
+                parts.append(f"{child_name}:{self._format(weight)}")
+            add("retrievers", ", ".join(parts))
+
+        return rows[: self._int(config.get("config_rows", 30), 30)]
+
     def _reranker_rows(self, retriever: Any) -> list[tuple[str, Any]]:
         reranker = getattr(retriever, "reranker", None)
         if reranker is None:
@@ -420,12 +616,18 @@ class StaticRetrieverReport:
 
     def _get_query_text(self, queries: dict[Any, Any], query_id: str) -> str:
         query = self._lookup(queries, query_id)
-        if isinstance(query, dict):
-            return str(query.get("text") or query.get("query") or query.get("query_text") or query_id)
-        return str(query or query_id)
+        return self._query_text(query, query_id)
 
     def _get_text(self, corpus: dict[Any, Any], doc_id: str) -> str:
         doc = self._lookup(corpus, doc_id)
+        return self._doc_text(doc)
+
+    def _query_text(self, query: Any, fallback: str = "") -> str:
+        if isinstance(query, dict):
+            return str(query.get("text") or query.get("query") or query.get("query_text") or fallback)
+        return str(query or fallback)
+
+    def _doc_text(self, doc: Any) -> str:
         if isinstance(doc, str):
             return doc
         if not isinstance(doc, dict):
@@ -455,6 +657,7 @@ class StaticRetrieverReport:
         styles.add(styles["BodyText"].clone("Small", fontSize=8, leading=10, spaceAfter=2))
         styles.add(styles["BodyText"].clone("Muted", fontSize=8, leading=10, textColor=colors.HexColor("#6B7280")))
         styles.add(styles["BodyText"].clone("Cell", fontSize=8, leading=10))
+        styles.add(styles["BodyText"].clone("HeaderCell", fontSize=8, leading=10, textColor=colors.white))
         return styles
 
     def _path(self, output_path: str | Path | None) -> Path:
@@ -491,6 +694,16 @@ class StaticRetrieverReport:
         }.get(metric.lower(), metric)
         return f"{metric}@{k}" if sep else metric
 
+    def _ordered_metric_names(self, names: set[str]) -> list[str]:
+        order = {"NDCG": 0, "MAP": 1, "Recall": 2, "Precision": 3, "MRR": 4}
+
+        def key(name: str) -> tuple[int, int, str]:
+            metric, _, raw_k = name.partition("@")
+            digits = "".join(ch for ch in raw_k if ch.isdigit())
+            return (order.get(metric, len(order)), int(digits or 0), name)
+
+        return sorted(names, key=key)
+
     def _number(self, value: Any) -> float | None:
         if isinstance(value, dict):
             value = value.get("score", value.get("_score"))
@@ -523,6 +736,16 @@ class StaticRetrieverReport:
         except (TypeError, ValueError):
             return default
         return value if value > 0 else default
+
+    def _as_list(self, value: Any) -> list[Any]:
+        if value is None:
+            return []
+        if isinstance(value, (list, tuple, set)):
+            return list(value)
+        return [value]
+
+    def _is_scalar(self, value: Any) -> bool:
+        return isinstance(value, (str, int, float, bool)) or value is None
 
     def _esc(self, value: Any) -> str:
         return escape(str(value or ""))
