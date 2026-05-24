@@ -10,6 +10,7 @@ from pathlib import Path
 from raccoon.dataloader.utils import load_local_beir_dataset
 from raccoon.custom_retriever.BM25Retriever import BM25Retriever
 from raccoon.custom_retriever.util.utils import append_results
+from raccoon.custom_retriever.util.Reranker import Reranker 
 
 from testcontainers.elasticsearch import ElasticSearchContainer
 from beir.retrieval.evaluation import EvaluateRetrieval
@@ -111,6 +112,17 @@ def main() -> None:
     # )
 
     #======================================================
+    # Initialize Reranker
+    #======================================================
+    reranker = Reranker(
+        model_id=RERANKER_ID,
+        top_k=TOP_K,
+        batch_size=16,
+        max_lenght=512,
+        device=DEVICE,
+    )
+
+    #======================================================
     # BM25 Retrieval and evaluation
     #======================================================
     
@@ -127,6 +139,7 @@ def main() -> None:
             corpus = corpus,
             queries = queries,
             topk=TOP_K,
+            reranker=reranker,
         )
         retriever_bm25.index_corpus()
         retriever_bm25.search()
@@ -134,6 +147,19 @@ def main() -> None:
         eval_results = eval.evaluate(qrels=qrels, results=retriever_bm25.results, k_values=[1, 3, 5, 10, 20],)
         retriever_bm25.add_retrieval_result(eval_results)
         append_results(RESULT_FILE_PATH, retriever_bm25.retriever_type,retriever_bm25.retrieval_metrics, retriever_bm25.metrics)
+        
+
+        eval_results = eval.evaluate(qrels=qrels, results=retriever_bm25.rerank_results, k_values=[1, 3, 5, 10, 20],)
+        retriever_bm25.add_rerank_retrieval_result(eval_results)
+        append_results(
+            RESULT_FILE_PATH,
+            "reranker-bm25",    
+            {
+                "rerank": retriever_bm25.retrieval_metrics["rerank"],
+                "rerank_time": retriever_bm25.rerank_metrics,
+            }
+        )
+
         RETRIEVERS.append(retriever_bm25)
     #======================================================
     # Dense Retrieval and evaluation
@@ -145,7 +171,8 @@ def main() -> None:
                                            max_length=MAX_LENGHT,
                                            device=DEVICE,
                                            query_prompt_name=QUERY_PROMPT_NAME,
-                                           passage_prompt_name=PASSAGE_PROMPT_NAME,)
+                                           passage_prompt_name=PASSAGE_PROMPT_NAME,
+                                           reranker=reranker,)
     retriever_dense.search(top_k=TOP_K, 
                      encode_output_path= ENCODE_PATH,
                      )
@@ -153,6 +180,18 @@ def main() -> None:
     eval_results = eval.evaluate(qrels=qrels, results=retriever_dense.results, k_values=[1, 3, 5, 10, 20],)
     retriever_dense.add_retrieval_result(eval_results)
     append_results(RESULT_FILE_PATH, retriever_dense.retriever_type, retriever_dense.retrieval_metrics, retriever_dense.metrics)
+    
+    eval_results = eval.evaluate(qrels=qrels, results=retriever_dense.rerank_results, k_values=[1, 3, 5, 10, 20],)
+    retriever_dense.add_rerank_retrieval_result(eval_results)
+    append_results(
+    RESULT_FILE_PATH,
+    "reranker-dense",
+    {
+        "rerank": retriever_dense.retrieval_metrics["rerank"],
+        "rerank_time": retriever_dense.rerank_metrics,
+    }
+    )
+    
     RETRIEVERS.append(retriever_dense)
 
     #======================================================
@@ -166,13 +205,26 @@ def main() -> None:
             (retriever_bm25, 0.3),
             (retriever_dense, 0.7),
         ],
-        k=60
+        k=60,
+        reranker=reranker,
     )
     retriever_hybrid.search(top_k=TOP_K)
     eval = EvaluateRetrieval()
     eval_results = eval.evaluate(qrels=qrels, results=retriever_hybrid.results, k_values=[1, 3, 5, 10, 20],)
     retriever_hybrid.add_retrieval_result(eval_results)
     append_results(RESULT_FILE_PATH, retriever_hybrid.retriever_type, retriever_hybrid.retrieval_metrics, retriever_hybrid.metrics)
+    
+    eval_results = eval.evaluate(qrels=qrels, results=retriever_hybrid.rerank_results, k_values=[1, 3, 5, 10, 20],)
+    retriever_hybrid.add_rerank_retrieval_result(eval_results)
+    append_results(
+    RESULT_FILE_PATH,
+    "reranker-hybrid",
+    {
+        "rerank": retriever_hybrid.retrieval_metrics["rerank"],
+        "rerank_time": retriever_hybrid.rerank_metrics,
+    }
+)
+    
     RETRIEVERS.append(retriever_hybrid)  
  
     #======================================================
@@ -185,8 +237,8 @@ def main() -> None:
     "dataset_name": name,
     "cache_path": "data/processed/rechtspraken/beir_600/linear_rag_cache",
 
-    "device": "cuda",
-    "max_seq_length": 256,
+    "device": DEVICE,
+    "max_seq_length": 512,
 
     # Match DenseRetriever more closely
     "embed_batch_size": 128,
@@ -236,6 +288,7 @@ def main() -> None:
         config=config,
         corpus=corpus,
         queries=queries,
+        reranker=reranker,
     )
 
     retriever_linear.index_corpus()
@@ -250,6 +303,20 @@ def main() -> None:
         k_values=[1, 3, 5, 10, 50, 100],
     )
     retriever_linear.add_retrieval_result(eval_results)
+    append_results(RESULT_FILE_PATH, retriever_linear.retriever_type, retriever_linear.retrieval_metrics, retriever_linear.metrics)
+
+
+    eval_results = eval.evaluate(qrels=qrels, results=retriever_linear.rerank_results, k_values=[1, 3, 5, 10, 20],)
+    retriever_linear.add_rerank_retrieval_result(eval_results)
+    append_results(
+    RESULT_FILE_PATH,
+    "reranker-linear",
+    {
+        "rerank": retriever_linear.retrieval_metrics["rerank"],
+        "rerank_time": retriever_linear.rerank_metrics,
+    }
+)
+
     RETRIEVERS.append(retriever_linear)
     
 

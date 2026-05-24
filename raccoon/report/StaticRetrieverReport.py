@@ -105,7 +105,7 @@ class StaticRetrieverReport:
         metrics = getattr(retriever, "metrics", {}) or {}
         retrieval_metrics = getattr(retriever, "retrieval_metrics", None)
         rerank_metrics = getattr(retriever, "rerank_metrics", {}) or {}
-        rerank_retrieval_metrics = getattr(retriever, "rerank_retrieval_metrics", None)
+        rerank_retrieval_metrics = getattr(retriever, "rerank_metrics", None).get("rerank")
 
         story = [Paragraph(self._esc(self._name(retriever)), styles["Section"])]
         story += self._table("Configuration", self._config_rows(retriever, config), styles)

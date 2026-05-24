@@ -31,10 +31,12 @@ class BaseRetriever(ABC):
         self.is_ready = False
         self.reranker = reranker
         self.metrics = {}
-        self.retrieval_metrics = {}
+        self.retrieval_metrics = {
+            self.retriever_type: {},
+            "rerank": {}
+        }
         self.rerank_results = {}
         self.rerank_metrics = {}
-        self.rerank_retrieval_metrics = {}
 
     @abstractmethod
     def create_index(self, *args, **kwargs) -> None:
@@ -55,18 +57,22 @@ class BaseRetriever(ABC):
     def add_retrieval_result(self, result: tuple[dict[str, Any]]) -> None:
         for d in result:
             metric = list(d.keys())[0].split("@")[0].lower()
-            self.retrieval_metrics[metric] = d
+            self.retrieval_metrics[self.retriever_type][metric] = d
+    
+    def add_rerank_retrieval_result(self, result: tuple[dict[str, Any]]) -> None:
+        for d in result:
+            metric = list(d.keys())[0].split("@")[0].lower()
+            self.retrieval_metrics["rerank"][metric] = d
             
     def store_rerank_results(self) -> dict:
         if self.reranker is None:
             return {}
 
-        self.rerank_results = self.reranker.rerank_with_transformers(
+        self.rerank_results, self.rerank_metrics = self.reranker.rerank_with_transformers(
             self.corpus,
             self.queries,
             self.results,
         )
-        self.rerank_metrics = getattr(self.reranker, "rerank_metrics", {}) or {}
         return self.rerank_results
 
     

@@ -20,6 +20,7 @@ class Reranker():
         self.max_length = max_lenght
         self.device = device
         self._load_reranker()
+        self.rerank_retrieval_metrics = {}        
 
     def _load_reranker(self,) -> None:
         tokenizer = AutoTokenizer.from_pretrained(self.model_id, trust_remote_code=True)
@@ -198,9 +199,8 @@ class Reranker():
         if use_cuda:
             print(f"Peak GPU memory: {peak_mem:.2f} GB")
 
-        self.results = rerank_results
 
-        self.rerank_metrics = {
+        rerank_metrics = {
             "total_queries": len(query_ids),
             "total_pairs": total_pairs,
             "total_batches": total_batches,
@@ -213,4 +213,5 @@ class Reranker():
             "peak_gpu_memory_gb": round(peak_mem, 2) if peak_mem is not None else None,
         }
 
-        return rerank_results
+        return rerank_results , rerank_metrics
+    
