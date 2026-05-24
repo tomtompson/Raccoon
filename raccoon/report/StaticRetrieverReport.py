@@ -70,6 +70,8 @@ class StaticRetrieverReport:
         story += [
             Paragraph(self._esc(title), styles["Title"]),
             Paragraph(datetime.datetime.now().strftime("Generated %Y-%m-%d %H:%M"), styles["MutedCenter"]),
+            Spacer(1, 6),
+            *self._intro(config, len(retrievers), styles),
         ]
 
         if not retrievers:
@@ -154,6 +156,20 @@ class StaticRetrieverReport:
         if not rows:
             return []
         return [Paragraph("Corpus Summary", styles["Section"])] + self._table("Corpus and Queries", rows, styles)
+
+    def _intro(self, config: dict[str, Any], retriever_count: int, styles: dict[str, Any]) -> list[Any]:
+        intro = config.get("intro_text")
+        if intro is None:
+            retriever_word = "retriever" if retriever_count == 1 else "retrievers"
+            intro = (
+                f"This report compares {retriever_count} {retriever_word} for retrieval-augmented generation. "
+                "It summarizes the corpus and query set, compares ranking quality and runtime, then shows each "
+                "retriever's configuration and sample hits. Use the comparison section to choose which retriever "
+                "is most likely to put useful evidence into the generator's context window."
+            )
+        if not intro:
+            return []
+        return [Paragraph(self._esc(intro), styles["Intro"]), Spacer(1, 8)]
 
     def _corpus_rows(self, retrievers: list[Any]) -> list[tuple[str, Any]]:
         source = next(
@@ -292,7 +308,29 @@ class StaticRetrieverReport:
             self._comparison_table(metric_maps, metrics, styles),
             Spacer(1, 6),
             self._grouped_bar_chart(metric_maps, metrics),
+            *self._metric_explanation(title, styles),
             Spacer(1, 10),
+        ]
+
+    def _metric_explanation(self, title: str, styles: dict[str, Any]) -> list[Any]:
+        if title != "Retrieval Metrics":
+            return []
+        return [
+            Paragraph(
+                "<b>Metric guide:</b> These scores evaluate the retrieval stage before the language model writes an answer. "
+                "In a RAG pipeline, better retrieval means the generator receives more relevant, better ranked evidence "
+                "and has less need to rely on unsupported model knowledge.",
+                styles["Note"],
+            ),
+            Paragraph(
+                "<b>Recall@k</b> is coverage: how many relevant documents were found in the top k. "
+                "<b>Precision@k</b> is focus: how much of the top k is relevant instead of distracting context. "
+                "<b>MAP@k</b> rewards relevant documents appearing consistently early across queries. "
+                "<b>NDCG@k</b> rewards rank order and graded relevance, so it is often the best single signal for "
+                "whether the strongest evidence reaches the prompt first.",
+                styles["Note"],
+            ),
+            Spacer(1, 4),
         ]
 
     def _comparison_table(
@@ -653,11 +691,13 @@ class StaticRetrieverReport:
         styles.add(styles["Normal"].clone("MutedCenter", alignment=TA_CENTER, fontSize=9, textColor=colors.HexColor("#6B7280")))
         styles.add(styles["Heading2"].clone("Section", fontSize=12, leading=15, spaceAfter=7, backColor=colors.HexColor("#F3F4F6"), borderPadding=5))
         styles.add(styles["Heading3"].clone("Subsection", fontSize=10, leading=12, spaceBefore=6, spaceAfter=5))
+        styles.add(styles["BodyText"].clone("Intro", fontSize=9, leading=12, spaceAfter=4, textColor=colors.HexColor("#374151")))
         styles.add(styles["BodyText"].clone("Body", fontSize=9, leading=11, spaceAfter=4))
         styles.add(styles["BodyText"].clone("Small", fontSize=8, leading=10, spaceAfter=2))
         styles.add(styles["BodyText"].clone("Muted", fontSize=8, leading=10, textColor=colors.HexColor("#6B7280")))
         styles.add(styles["BodyText"].clone("Cell", fontSize=8, leading=10))
         styles.add(styles["BodyText"].clone("HeaderCell", fontSize=8, leading=10, textColor=colors.white))
+        styles.add(styles["BodyText"].clone("Note", fontSize=8, leading=10, textColor=colors.HexColor("#374151"), leftIndent=4, rightIndent=4))
         return styles
 
     def _path(self, output_path: str | Path | None) -> Path:
