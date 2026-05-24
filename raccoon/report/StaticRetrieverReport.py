@@ -23,11 +23,18 @@ class StaticRetrieverReport:
         output_path: str | Path | None = None,
         config: dict[str, Any] | None = None,
         n_samples: int | None = None,
+        language: str = "english",
     ) -> Path:
         config = config or {}
         path = self._path(output_path)
         styles = self._styles()
         retrievers = self._list(retrievers)
+        if language.lower() in ("english", "en"):
+            from .util.EnglishText import EnglishText
+            self.text_class = EnglishText()
+        elif language.lower() in ("dutch", "nl", "nederlands"):
+            from .util.DutchText import DutchText
+            self.text_class = DutchText()
 
         doc = SimpleDocTemplate(
             str(path),
@@ -158,16 +165,9 @@ class StaticRetrieverReport:
         return [Paragraph("Corpus Summary", styles["Section"])] + self._table("Corpus and Queries", rows, styles)
 
     def _intro(self, config: dict[str, Any], retriever_count: int, styles: dict[str, Any]) -> list[Any]:
-        intro = config.get("intro_text")
-        if intro is None:
-            retriever_word = "retriever" if retriever_count == 1 else "retrievers"
-            intro = (
-                f"This report compares {retriever_count} {retriever_word} for retrieval-augmented generation. "
-                "It summarizes the corpus and query set, compares ranking quality and runtime, then shows each "
-                "retriever's configuration and sample hits. Use the comparison section to choose which retriever "
-                "is most likely to put useful evidence into the generator's context window."
-            )
-        if not intro:
+        retriever_word = "retriever" if retriever_count == 1 else "retrievers"
+        intro = self.text_class.intro_text.format(retriever_count=retriever_count, retriever_word=retriever_word)
+        if not self.text_class.intro_text:
             return []
         return [Paragraph(self._esc(intro), styles["Intro"]), Spacer(1, 8)]
 
@@ -226,36 +226,46 @@ class StaticRetrieverReport:
 
         story = [Paragraph("Retriever Comparison", styles["Section"])]
 
-        metric_maps = self._metric_maps(retrievers, "retrieval_metrics", config)
+        metric_maps = self._comparison_metric_maps_with_rerank(retrievers, config)
         chart_metrics = self._selected_metrics(metric_maps, config.get("comparison_metric"))
-        story += self._metric_comparison("Retrieval Metrics", metric_maps, chart_metrics, styles)
 
-        rerank_metric_maps = self._metric_maps(retrievers, "rerank_retrieval_metrics", config)
-        rerank_chart_metrics = self._selected_metrics(
-            rerank_metric_maps,
-            config.get("rerank_comparison_metric") or config.get("comparison_metric"),
-        )
-        story += self._metric_comparison("Rerank Retrieval Metrics", rerank_metric_maps, rerank_chart_metrics, styles)
+        if chart_metrics:
+
+            story += [
+            Paragraph("Retrieval and Rerank Metrics", styles["Subsection"]),
+            self._comparison_table(metric_maps, chart_metrics, styles),
+            Spacer(1, 6),]
+            story += self._comparison_color_table(styles)
+            story += [
+            self._overlap_grouped_bar_chart(metric_maps, chart_metrics),
+            Spacer(1, 6),]
+        
+
+        
+
+        story += [
+            *self._metric_explanation("Retrieval Metrics", styles),
+            Spacer(1, 10),
+        ]
 
         index_values = self._runtime_values(retrievers, "index_time")
         query_values = self._runtime_values(retrievers, "query_time")
 
         if index_values:
             story += [
-                Paragraph("Index Time (seconds)", styles["Subsection"]),
+                Paragraph("Total Index Time (seconds)", styles["Subsection"]),
                 self._bar_chart(index_values),
-                Spacer(1, 8),
+                Spacer(1, 10),
             ]
 
         if query_values:
             story += [
-                Paragraph("Query Time (seconds)", styles["Subsection"]),
+                Paragraph("Total Query Time (seconds)", styles["Subsection"]),
                 self._bar_chart(query_values),
-                Spacer(1, 8),
+                Spacer(1, 10),
             ]
 
         rerank_values = self._rerank_values(retrievers, "total_wall_time_sec")
-
         if rerank_values:
             story += [
                 Paragraph("Rerank Time (seconds)", styles["Subsection"]),
@@ -265,16 +275,196 @@ class StaticRetrieverReport:
 
         return story + [Spacer(1, 4)] if len(story) > 1 else []
 
-    def _metric_maps(
+    
+
+    def _comparison_metric_maps_with_rerank(
         self,
         retrievers: list[Any],
-        attribute: str,
         config: dict[str, Any],
     ) -> list[tuple[str, dict[str, float]]]:
-        return [
-            (self._name(retriever), dict(self._metric_rows(getattr(retriever, attribute, None), config)))
-            for retriever in retrievers
+        rows: list[tuple[str, dict[str, float]]] = []
+
+        for retriever in retrievers:
+            name = self._name(retriever)
+            retrieval_metrics = getattr(retriever, "retrieval_metrics", {}) or {}
+
+            base_key = getattr(retriever, "retriever_type", None)
+            base_metrics = retrieval_metrics.get(base_key, {}) if base_key else {}
+            rerank_metrics = retrieval_metrics.get("rerank", {})
+
+            base_rows = dict(self._metric_rows(base_metrics, config))
+            rerank_rows = dict(self._metric_rows(rerank_metrics, config))
+
+            if base_rows:
+                rows.append((name, base_rows))
+
+            if rerank_rows:
+                rows.append((f"{name} + rerank", rerank_rows))
+
+        return rows
+
+
+    def _comparison_color_table(self, styles: dict[str, Any]) -> list[Any]:
+        rows = [
+            ("Base retrieval", "#2563EB"),
+            ("Rerank", "#F97316"),
         ]
+
+        table = Table(
+            [
+                [
+                    Paragraph("Series", styles["HeaderCell"]),
+                ],
+                *[
+                    [
+                        Paragraph(self._esc(label), styles["Cell"]),
+                    ]
+                    for label, hex_value in rows
+                ],
+            ],
+            colWidths=[25 * mm, 25 * mm],
+            hAlign="LEFT",
+        )
+
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("BACKGROUND", (0, 1), (0, 1), colors.HexColor("#2563EB")),
+                    ("BACKGROUND", (0, 2), (0, 2), colors.HexColor("#F97316")),
+                    ("TEXTCOLOR", (0, 1), (0, 2), colors.white),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+
+        return [Paragraph("Chart Colors", styles["Subsection"]), table, Spacer(1, 8)]
+
+
+    def _overlap_grouped_bar_chart(
+        self,
+        metric_maps: list[tuple[str, dict[str, float]]],
+        metrics: list[str],
+    ) -> Drawing:
+        width = 170 * mm
+        label_width = 48 * mm
+        metric_width = 25 * mm
+        bar_start = label_width + metric_width
+        bar_width = 72 * mm
+        row_height = 9
+        group_height = 11 + row_height * len(metrics)
+
+        base_rows = [
+            (name, values)
+            for name, values in metric_maps
+            if not name.endswith(" + rerank")
+        ]
+
+        height = max(32, 8 + group_height * len(base_rows))
+        drawing = Drawing(width, height)
+
+        max_value = max(
+            [float(values[metric]) for _, values in metric_maps for metric in metrics if metric in values]
+            + [1.0]
+        )
+
+        base_color = colors.HexColor("#2563EB")
+        rerank_color = colors.HexColor("#F97316")
+        background_color = colors.HexColor("#E5E7EB")
+
+        lookup = dict(metric_maps)
+
+        y = height - 12
+        for base_name, base_values in base_rows:
+            rerank_name = f"{base_name} + rerank"
+            rerank_values = lookup.get(rerank_name, {})
+
+            drawing.add(
+                String(
+                    0,
+                    y,
+                    base_name,
+                    fontSize=7,
+                    fillColor=colors.HexColor("#111827"),
+                )
+            )
+
+            for index, metric in enumerate(metrics):
+                metric_y = y - 10 - row_height * index
+
+                drawing.add(
+                    String(
+                        label_width,
+                        metric_y + 1,
+                        self._truncate(metric, 14),
+                        fontSize=6,
+                        fillColor=colors.HexColor("#374151"),
+                    )
+                )
+
+                drawing.add(
+                    Rect(
+                        bar_start,
+                        metric_y,
+                        bar_width,
+                        5,
+                        fillColor=background_color,
+                        strokeColor=None,
+                    )
+                )
+
+                bars = []
+
+                base_value = self._number(base_values.get(metric))
+                if base_value is not None:
+                    bars.append(("base", base_value, base_color))
+
+                rerank_value = self._number(rerank_values.get(metric))
+                if rerank_value is not None:
+                    bars.append(("rerank", rerank_value, rerank_color))
+
+                # Draw higher value first, so it stays visually in the back.
+                # Draw lower value last, so it appears in front.
+                bars = sorted(bars, key=lambda item: item[1], reverse=True)
+
+                for _, value, color in bars:
+                    fill_width = bar_width * max(0.0, value / max_value)
+                    drawing.add(
+                        Rect(
+                            bar_start,
+                            metric_y,
+                            fill_width,
+                            5,
+                            fillColor=color,
+                            strokeColor=None,
+                        )
+                    )
+
+                label_parts = []
+                if base_value is not None:
+                    label_parts.append(f"B {self._format(base_value)}")
+                if rerank_value is not None:
+                    label_parts.append(f"R {self._format(rerank_value)}")
+
+                drawing.add(
+                    String(
+                        bar_start + bar_width + 4,
+                        metric_y + 1,
+                        " / ".join(label_parts),
+                        fontSize=6,
+                        fillColor=colors.HexColor("#111827"),
+                    )
+                )
+
+            y -= group_height
+
+        return drawing
 
     def _selected_metrics(
         self,
@@ -315,23 +505,18 @@ class StaticRetrieverReport:
     def _metric_explanation(self, title: str, styles: dict[str, Any]) -> list[Any]:
         if title != "Retrieval Metrics":
             return []
-        return [
-            Paragraph(
-                "<b>Metric guide:</b> These scores evaluate the retrieval stage before the language model writes an answer. "
-                "In a RAG pipeline, better retrieval means the generator receives more relevant, better ranked evidence "
-                "and has less need to rely on unsupported model knowledge.",
-                styles["Note"],
-            ),
-            Paragraph(
-                "<b>Recall@k</b> is coverage: how many relevant documents were found in the top k. "
-                "<b>Precision@k</b> is focus: how much of the top k is relevant instead of distracting context. "
-                "<b>MAP@k</b> rewards relevant documents appearing consistently early across queries. "
-                "<b>NDCG@k</b> rewards rank order and graded relevance, so it is often the best single signal for "
-                "whether the strongest evidence reaches the prompt first.",
-                styles["Note"],
-            ),
-            Spacer(1, 4),
+
+        story = [
+            Paragraph(self.text_class.metric_guide_text, styles["Note"]),
+            Paragraph(self.text_class.metric_text, styles["Note"]),
         ]
+
+        practical_text = getattr(self.text_class, "practical_interpretation_text", "")
+        if practical_text:
+            story.append(Paragraph(practical_text, styles["Note"]))
+
+        story.append(Spacer(1, 4))
+        return story
 
     def _comparison_table(
         self,
@@ -345,7 +530,7 @@ class StaticRetrieverReport:
                 [Paragraph("Retriever", styles["HeaderCell"])]
                 + [Paragraph(self._esc(metric), styles["HeaderCell"]) for metric in metrics],
                 *[
-                    [Paragraph(self._esc(self._truncate(name, 36)), styles["Cell"])]
+                    [Paragraph(self._esc(name), styles["Cell"])]
                     + [Paragraph(self._esc(self._format(values.get(metric))), styles["Cell"]) for metric in metrics]
                     for name, values in metric_maps
                     if any(metric in values for metric in metrics)
@@ -397,7 +582,7 @@ class StaticRetrieverReport:
 
         y = height - 12
         for name, values in rows:
-            drawing.add(String(0, y, self._truncate(name, 28), fontSize=7, fillColor=colors.HexColor("#111827")))
+            drawing.add(String(0, y, name, fontSize=7, fillColor=colors.HexColor("#111827")))
             for index, metric in enumerate(metrics):
                 value = self._number(values.get(metric))
                 metric_y = y - 10 - row_height * index
@@ -457,7 +642,7 @@ class StaticRetrieverReport:
 
         y = height - 14
         for name, value in values:
-            drawing.add(String(0, y, self._truncate(name, 24), fontSize=7, fillColor=colors.HexColor("#111827")))
+            drawing.add(String(0, y,name, fontSize=7, fillColor=colors.HexColor("#111827")))
             drawing.add(Rect(label_width, y - 3, bar_width, 6, fillColor=colors.HexColor("#E5E7EB"), strokeColor=None))
             drawing.add(Rect(label_width, y - 3, bar_width * max(0.0, value / max_value), 6, fillColor=colors.HexColor("#2563EB"), strokeColor=None))
             drawing.add(String(label_width + bar_width + 5, y, self._format(value), fontSize=7, fillColor=colors.HexColor("#111827")))
