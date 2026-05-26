@@ -811,32 +811,46 @@ class StaticRetrieverReport:
                 rows.append((self._metric_name(label), self._number(value)))
         return self._sort_metrics(rows, config)
     
-    def _metric_table(self, retrieval_results: dict[str, Any], config: dict[str, Any]) -> tuple[list[str], list[list[Any]]]:
-        flattened_by_retriever = {}
-        all_metrics = set()
+    def _metric_table(self, metrics: Any, config: dict[str, Any],) -> tuple[list[str], list[list[Any]]]:
+        rows = self._metric_rows(metrics, config)
 
-        for retriever_name, metrics in retrieval_results.items():
-            flattened = dict(self._metric_rows(metrics, config))
-            flattened_by_retriever[retriever_name] = flattened
-            all_metrics.update(flattened.keys())
+        grouped: dict[str, dict[int, Any]] = {}
+        ks: set[int] = set()
 
-        metric_columns = [
-            name for name, _ in self._sort_metrics([(name, 0) for name in all_metrics], config)
-        ]
+        for name, value in rows:
+            metric, _, raw_k = name.partition("@")
 
-        headers = ["Retriever"] + metric_columns
-        rows = []
+            if not raw_k:
+                continue
 
-        for retriever_name, flattened in flattened_by_retriever.items():
-            row = [retriever_name]
+            digits = "".join(ch for ch in raw_k if ch.isdigit())
+            if not digits:
+                continue
 
-            for metric in metric_columns:
-                value = flattened.get(metric)
+            k = int(digits)
+            grouped.setdefault(metric, {})[k] = value
+            ks.add(k)
+
+        ordered_metrics = ["NDCG", "MAP", "Recall", "Precision", "MRR"]
+        ordered_ks = sorted(ks)
+
+        headers = ["Metric"] + [f"@{k}" for k in ordered_ks]
+
+        table_rows = []
+
+        for metric in ordered_metrics:
+            if metric not in grouped:
+                continue
+
+            row = [metric]
+
+            for k in ordered_ks:
+                value = grouped[metric].get(k)
                 row.append("-" if value is None else round(value, 4))
 
-            rows.append(row)
+            table_rows.append(row)
 
-        return headers, rows
+        return headers, table_rows
 
     def _metrics_to_columns(self, metrics: Any) -> dict[str, float]:
 

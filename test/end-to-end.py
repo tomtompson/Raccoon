@@ -336,7 +336,7 @@ def main() -> None:
     #======================================================  
     report_config = {
     # Report samples
-    "sample_queries": 2,
+    "sample_queries": 1,
     "sample_results_per_query": 3,
     "sample_text_chars": 500,
 

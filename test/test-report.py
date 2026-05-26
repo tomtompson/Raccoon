@@ -44,16 +44,54 @@ class FakeRetriever:
 
         self.retrieval_metrics = {
             retriever_type: {
+                "NDCG@1": ndcg - 0.08,
+                "NDCG@3": ndcg - 0.04,
+                "NDCG@5": ndcg - 0.02,
                 "NDCG@10": ndcg,
+                "NDCG@20": ndcg + 0.02,
+
+                "Recall@1": recall - 0.25,
+                "Recall@3": recall - 0.15,
+                "Recall@5": recall - 0.08,
                 "Recall@10": recall,
+                "Recall@20": recall + 0.08,
+
+                "MAP@1": ndcg - 0.12,
+                "MAP@3": ndcg - 0.10,
+                "MAP@5": ndcg - 0.09,
                 "MAP@10": ndcg - 0.08,
+                "MAP@20": ndcg - 0.07,
+
+                "Precision@1": recall - 0.15,
+                "Precision@3": recall - 0.20,
+                "Precision@5": recall - 0.23,
                 "Precision@10": recall - 0.25,
+                "Precision@20": recall - 0.30,
             },
             "rerank": {
+                "NDCG@1": rerank_ndcg - 0.08,
+                "NDCG@3": rerank_ndcg - 0.04,
+                "NDCG@5": rerank_ndcg - 0.02,
                 "NDCG@10": rerank_ndcg,
+                "NDCG@20": rerank_ndcg + 0.02,
+
+                "Recall@1": rerank_recall - 0.25,
+                "Recall@3": rerank_recall - 0.15,
+                "Recall@5": rerank_recall - 0.08,
                 "Recall@10": rerank_recall,
+                "Recall@20": rerank_recall + 0.08,
+
+                "MAP@1": rerank_ndcg - 0.10,
+                "MAP@3": rerank_ndcg - 0.08,
+                "MAP@5": rerank_ndcg - 0.07,
                 "MAP@10": rerank_ndcg - 0.06,
+                "MAP@20": rerank_ndcg - 0.05,
+
+                "Precision@1": rerank_recall - 0.12,
+                "Precision@3": rerank_recall - 0.17,
+                "Precision@5": rerank_recall - 0.20,
                 "Precision@10": rerank_recall - 0.22,
+                "Precision@20": rerank_recall - 0.26,
             }
         }
 
