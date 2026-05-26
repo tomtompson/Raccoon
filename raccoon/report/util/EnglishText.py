@@ -29,3 +29,4 @@ class EnglishText(BaseText):
                 "usually relies more heavily on the first passages in the context."
                 "Runtime must also be taken into account: a slightly lower score may be acceptable if the retriever is much "
                 "faster or remains easier to maintain."),
+        )

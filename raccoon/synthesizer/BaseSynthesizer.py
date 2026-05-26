@@ -124,6 +124,10 @@ class BaseSynthesizer(ABC):
     def _judge_candidates_with_ollama_realistic(self, query, candidates, model, candidate_text_limit):
         pass
 
+    @abstractmethod
+    def generate_description_of_ds(self, text: str, model: str, language: str, corpus: Dict, queries: Dict, description_length: int = 100) -> str:
+        pass    
+
     def _pool_candidates_realistic(
         self,
         query: str,

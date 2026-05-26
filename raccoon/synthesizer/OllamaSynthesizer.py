@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 import ollama
 from langchain_core.documents import Document
@@ -14,7 +14,7 @@ from .helper.helper import (
     _extract_json_object,
     _safe_int,
 )
-
+import random as ramdom
 
 class OllamaSynthesizer(BaseSynthesizer):
     def __init__(
@@ -65,6 +65,69 @@ class OllamaSynthesizer(BaseSynthesizer):
             return response["message"]["content"]
         except Exception as exc:
             raise RuntimeError(f"Unexpected Ollama response shape: {response}") from exc
+
+    def generate_description_of_ds(
+        self,
+        model: str,
+        language: str,
+        corpus: Dict,
+        queries: Dict,
+        description_length: int = 100
+    ) -> str:
+
+        if language.lower() in ("english", "en"):
+            language = "english"
+            prompt_name = "description_generation_english"
+        elif language.lower() in ("dutch", "nl", "nederlands"):
+            language = "dutch"
+            prompt_name = "description_generation_dutch"
+
+
+        prompt = self.load_prompt(f"prompts/description/{prompt_name}.txt") 
+        self.prompts.update({prompt_name: prompt})
+
+        key_c, value_c = ramdom.choice(list(corpus.items()))
+        key_q, value_q = ramdom.choice(list(queries.items()))
+
+        prompt_query_generation = self.render_prompt(
+            "query_generation",
+            n_candidates=8,
+            parent_text=value_c["text"][:2200],
+        )
+
+        promt_candidate_judging = self.render_prompt(
+            "candidate_judging",
+            query="Voorbeeldvraag",
+            candidates_json=json.dumps([{
+                "child_id": "voorbeeld_id",
+                "title": "Voorbeeld titel",
+                "text": "Voorbeeld tekst",
+            }], ensure_ascii=False),
+        )
+
+        prompt = self.render_prompt(
+            prompt_name,
+            language=language,
+            example_corpus_text=value_c["text"][:2000],
+            example_query_text=value_q[:2000],
+            description_length=description_length,
+            query_generation_prompt=prompt_query_generation,
+            candidate_judging_prompt=promt_candidate_judging,
+        )
+
+        schema = {
+            "type": "string",
+        }
+
+        content = self._ollama_chat_json(
+            model=model,
+            prompt=prompt,
+            schema=schema,
+            temperature=0.7,
+            think=False,
+        )
+
+        return content.strip()
 
     def _generate_realistic_query_candidates_from_parent(
         self,

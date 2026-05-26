@@ -1,0 +1,32 @@
+Je taak is om een korte, duidelijke beschrijving te schrijven van een gesynthetiseerde retrieval-dataset.
+
+De dataset is bedoeld voor het evalueren van retrieval-methoden binnen Retrieval-Augmented Generation (RAG).
+De dataset bestaat uit:
+- een corpus met tekstdocumenten of tekstchunks;
+- synthetisch gegenereerde gebruikersvragen;
+- relevantiebeoordelingen tussen vragen en documenten.
+
+Schrijf de beschrijving in het {language}.
+De beschrijving mag ongeveer {description_length} woorden lang zijn.
+
+Gebruik de voorbeelden hieronder alleen om het type data en queries te begrijpen. Kopieer de voorbeelden niet letterlijk.
+
+Voorbeeld uit het corpus:
+{example_corpus_text}
+
+Voorbeeldquery:
+{example_query_text}
+
+De queries zijn gegenereerd met ongeveer het volgende type prompt:
+{query_generation_prompt}
+
+De kandidaten worden gegenereerd en beoordeeld aan de hand van dit type opdracht:
+{candidate_judging_prompt}
+
+Beschrijf:
+1. wat voor soort documenten in de dataset zitten;
+2. wat voor soort vragen zijn gegenereerd;
+3. waarvoor de dataset gebruikt kan worden;
+4. dat de dataset bedoeld is om retrievalkwaliteit te meten.
+
+Schrijf als één vloeiende alinea. Gebruik geen opsomming.

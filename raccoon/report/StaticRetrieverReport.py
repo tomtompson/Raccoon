@@ -19,6 +19,7 @@ class StaticRetrieverReport:
     def generate_report(
         self,
         title: str | None = None,
+        ds_description: str | None = None,
         retrievers: Any | None = None,
         output_path: str | Path | None = None,
         config: dict[str, Any] | None = None,
@@ -47,6 +48,7 @@ class StaticRetrieverReport:
         doc.build(
             self._story(
                 title=title or "Retriever Report",
+                ds_description=ds_description,
                 retrievers=retrievers,
                 styles=styles,
                 config=config,
@@ -68,6 +70,7 @@ class StaticRetrieverReport:
         n_samples: int,
         results_per_query: int,
         sample_chars: int,
+        ds_description: str | None = None,
     ) -> list[Any]:
         story: list[Any] = []
         logo = Path("raccoon/report/images/logo.png")
@@ -76,10 +79,16 @@ class StaticRetrieverReport:
 
         story += [
             Paragraph(self._esc(title), styles["Title"]),
-            Paragraph(datetime.datetime.now().strftime("Generated %Y-%m-%d %H:%M"), styles["MutedCenter"]),
+            Paragraph(datetime.datetime.now().strftime("Generated %Y-%m-%d %H:%M"), styles["Body"]),
             Spacer(1, 6),
             *self._intro(config, len(retrievers), styles),
         ]
+
+        if ds_description:
+            story += [
+                Paragraph(self._esc(ds_description.replace('"', '')), styles["Body"]),
+                Spacer(1, 6),
+            ]
 
         if not retrievers:
             story.append(Paragraph("No retriever results were provided.", styles["Body"]))
@@ -112,50 +121,101 @@ class StaticRetrieverReport:
         results = self._results(getattr(retriever, "results", {}))
         rerank_results = self._results(getattr(retriever, "rerank_results", {}))
         metrics = getattr(retriever, "metrics", {}) or {}
-        retrieval_metrics = getattr(retriever, "retrieval_metrics", None)
+        retrieval_metrics = getattr(retriever, "retrieval_metrics", {}) or {}
         rerank_metrics = getattr(retriever, "rerank_metrics", {}) or {}
-        rerank_retrieval_metrics = getattr(retriever, "rerank_metrics", None).get("rerank")
+        rerank_retrieval_metrics = getattr(retriever, "retrieval_metrics", None).get("rerank")
+
+        retrieval_metrics = getattr(retriever, "retrieval_metrics", {}) or {}
+        base_key = getattr(retriever, "retriever_type", None)
+        base_retrieval_metrics = retrieval_metrics.get(base_key, retrieval_metrics)
+        rerank_retrieval_metrics = retrieval_metrics.get("rerank", {})
+
+        headers, rows = self._metric_table(
+            {base_key or "retrieval": base_retrieval_metrics},
+            config,
+        )
+
+        rerank_headers, rerank_rows = self._metric_table(
+            {"rerank": rerank_retrieval_metrics},
+            config,
+        )
 
         story = [Paragraph(self._esc(self._name(retriever)), styles["Section"])]
         story += self._table("Configuration", self._config_rows(retriever, config), styles)
         story += self._table("Result Summary", self._summary(results), styles)
-        story += self._table("Retrieval Metrics", self._metric_rows(retrieval_metrics, config), styles)
+        story += self._table("Retrieval Metrics", rows, styles, headers=headers)
         story += self._table("Retriever Metrics", self._flatten(metrics)[: self._int(config.get("metric_rows", 12), 12)], styles)
         story += self._table("Reranker", self._reranker_rows(retriever), styles)
         story += self._table("Rerank Metrics", self._flatten(rerank_metrics), styles)
-        story += self._table("Rerank Retrieval Metrics", self._metric_rows(rerank_retrieval_metrics, config), styles)
+        story += self._table("Rerank Retrieval Metrics", rerank_rows, styles, headers=rerank_headers)
         story += self._samples("Sample Top Results", retriever, results, styles, n_samples, results_per_query, sample_chars)
         story += self._samples("Sample Top Rerank Results", retriever, rerank_results, styles, n_samples, results_per_query, sample_chars)
         return story
 
-    def _table(self, title: str, rows: list[tuple[str, Any]], styles: dict[str, Any]) -> list[Any]:
+    def _table(
+    self,
+    title: str,
+    rows: list[Any],
+    styles: dict[str, Any],
+    headers: list[str] | None = None,
+    ) -> list[Any]:
         if not rows:
             return []
 
-        table = Table(
-            [
+        if headers:
+            data = [
+                [
+                    Paragraph(self._esc(self._label(header)), styles["Cell"])
+                    for header in headers
+                ]
+            ]
+
+            data += [
+                [
+                    Paragraph(self._esc(self._format(value)), styles["Cell"])
+                    for value in row
+                ]
+                for row in rows
+            ]
+
+            col_count = len(headers)
+            page_width = 170 * mm
+            col_widths = [page_width / col_count] * col_count
+
+            style_commands = [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F3F4F6")),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+
+        else:
+            data = [
                 [
                     Paragraph(self._esc(self._label(label)), styles["Cell"]),
                     Paragraph(self._esc(self._format(value)), styles["Cell"]),
                 ]
                 for label, value in rows
-            ],
-            colWidths=[48 * mm, 122 * mm],
-            hAlign="LEFT",
-        )
-        table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F3F4F6")),
-                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ]
-            )
-        )
+            ]
+
+            col_widths = [48 * mm, 122 * mm]
+
+            style_commands = [
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F3F4F6")),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+
+        table = Table(data, colWidths=col_widths, hAlign="LEFT")
+        table.setStyle(TableStyle(style_commands))
+
         return [Paragraph(self._esc(title), styles["Subsection"]), table, Spacer(1, 8)]
 
     def _corpus_summary(self, retrievers: list[Any], styles: dict[str, Any]) -> list[Any]:
@@ -750,6 +810,57 @@ class StaticRetrieverReport:
             elif self._number(value) is not None:
                 rows.append((self._metric_name(label), self._number(value)))
         return self._sort_metrics(rows, config)
+    
+    def _metric_table(self, retrieval_results: dict[str, Any], config: dict[str, Any]) -> tuple[list[str], list[list[Any]]]:
+        flattened_by_retriever = {}
+        all_metrics = set()
+
+        for retriever_name, metrics in retrieval_results.items():
+            flattened = dict(self._metric_rows(metrics, config))
+            flattened_by_retriever[retriever_name] = flattened
+            all_metrics.update(flattened.keys())
+
+        metric_columns = [
+            name for name, _ in self._sort_metrics([(name, 0) for name in all_metrics], config)
+        ]
+
+        headers = ["Retriever"] + metric_columns
+        rows = []
+
+        for retriever_name, flattened in flattened_by_retriever.items():
+            row = [retriever_name]
+
+            for metric in metric_columns:
+                value = flattened.get(metric)
+                row.append("-" if value is None else round(value, 4))
+
+            rows.append(row)
+
+        return headers, rows
+
+    def _metrics_to_columns(self, metrics: Any) -> dict[str, float]:
+
+        result = {}
+
+        metric_names = ("NDCG", "MAP", "Recall", "Precision")
+
+        if isinstance(metrics, (list, tuple)) and len(metrics) == 4:
+
+            for metric_name, metric_values in zip(metric_names, metrics):
+
+                if not isinstance(metric_values, dict):
+                    continue
+
+                values = metric_values.get("summary", metric_values)
+
+                for k, v in values.items():
+
+                    number = self._number(v)
+
+                    if number is not None:
+                        result[f"{metric_name}@{k}"] = number
+
+        return result
 
     def _sort_metrics(self, rows: list[tuple[str, Any]], config: dict[str, Any]) -> list[tuple[str, Any]]:
         order = {"NDCG": 0, "MAP": 1, "Recall": 2, "Precision": 3, "MRR": 4}

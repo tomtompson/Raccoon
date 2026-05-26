@@ -22,7 +22,7 @@ OUTPUT_PATH_CHUNKS = Path("data/processed/chunks_recht")
 
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
 
-QUERY_PROMPT_PATH = "/prompts/query_scenarios/query_generation_ambiguous.txt"
+QUERY_PROMPT_PATH = "prompts/query_scenarios/query_generation_ambiguous.txt"
 OUTPUT_PATH_SYNTH = "data/processed/rechtspraken/beir_600"
 
 RESULT_FILE_PATH = "data/processed/rechtspraken/beir_600/eval_results.json"
@@ -66,14 +66,14 @@ def main() -> None:
     # #======================================================
     # # Synthesize dataset
     # #======================================================
-    # synth = OllamaSynthesizer(
-    # host="http://localhost:11434",
-    # prompt_paths={
-    #     "query_generation": QUERY_PROMPT_PATH,
-    #     "query_validation": "prompts/example_rechtspraak/query_validation.txt",
-    #     "candidate_judging": "prompts/example_rechtspraak/candidate_judging.txt",
-    #     "distribution_validation": "prompts/example_rechtspraak/distribution_validation.txt",
-    # },)
+    synth = OllamaSynthesizer(
+    host="http://localhost:11434",
+    prompt_paths={
+        "query_generation": QUERY_PROMPT_PATH,
+        "query_validation": "prompts/example_rechtspraak/query_validation.txt",
+        "candidate_judging": "prompts/example_rechtspraak/candidate_judging.txt",
+        "distribution_validation": "prompts/example_rechtspraak/distribution_validation.txt",
+    },)
     # parent = synth.load_chunks(OUTPUT_PATH_CHUNKS / "parent_chunks.json")
     # child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "child_chunks.json")
 
@@ -111,6 +111,8 @@ def main() -> None:
     #     rerank_keep_top_k=40,
     # )
 
+
+
     #======================================================
     # Initialize Reranker
     #======================================================
@@ -127,6 +129,14 @@ def main() -> None:
     #======================================================
     
     corpus, queries, qrels, name = load_local_beir_dataset(INPUT_PATH, "test")
+
+    description = synth.generate_description_of_ds(
+        model="qwen3:8b",
+        language="dutch",
+        corpus=corpus,
+        queries=queries,
+        description_length=250,
+    )
 
 
     with ElasticSearchContainer(ELASTIC_IMAGE) as container:
@@ -326,7 +336,7 @@ def main() -> None:
     #======================================================  
     report_config = {
     # Report samples
-    "sample_queries": 3,
+    "sample_queries": 2,
     "sample_results_per_query": 3,
     "sample_text_chars": 500,
 
@@ -350,7 +360,7 @@ def main() -> None:
     },
     }
     report = StaticRetrieverReport()
-    report.generate_report("Retriever Performance Report", RETRIEVERS ,output_path=PDF_PATH, config=report_config)
+    report.generate_report("Retriever Performance Report", description, RETRIEVERS ,output_path=PDF_PATH, language="dutch", config=report_config)
 
 
 

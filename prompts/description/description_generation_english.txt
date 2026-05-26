@@ -1,0 +1,32 @@
+Your task is to write a short, clear description of a synthesized retrieval dataset.
+
+The dataset is designed for evaluating retrieval methods within Retrieval-Augmented Generation (RAG).
+The dataset consists of:
+- a corpus of text documents or text chunks;
+- synthetically generated user queries;
+- relevance judgments between queries and documents.
+
+Write the description in {language}.
+The description should be around {description_length} words.
+
+Use the examples below only to understand the type of data and queries. Do not copy the examples directly.
+
+Example from the corpus:
+{example_corpus_text}
+
+Example query:
+{example_query_text}
+
+The queries were generated with approximately the following type of prompt:
+{query_generation_prompt}
+
+The candidates are generated and judged with this type of prompt:
+{candidate_judging_prompt}
+
+Describe:
+1. what type of documents are included in the dataset;
+2. what type of questions were generated;
+3. what the dataset can be used for;
+4. that the dataset is intended to measure retrieval quality.
+
+Write this as one flowing paragraph. Do not use bullet points.
