@@ -36,4 +36,26 @@ class DutchText(BaseText):
                 "Runtime moet daarnaast worden meegewogen: een iets lagere score kan acceptabel zijn wanneer de retriever veel "
                 "sneller is of eenvoudiger te onderhouden blijft."
             ),
+
+            throughput_text=(
+                "<b>Uitleg runtime en throughput:</b> Deze resultaten evalueren de praktische prestaties van de retrievalfase "
+                "naast retrievalkwaliteit. Query time meet hoeveel tijd nodig is om queries te verwerken, terwijl index time "
+                "aangeeft hoeveel tijd nodig is om de volledige index op te bouwen. Queries/sec en documents/sec meten de "
+                "throughput van het systeem en geven inzicht in schaalbaarheid binnen grotere RAG-omgevingen. Storage MB toont "
+                "hoeveel opslagruimte de retrievalindex gebruikt, wat belangrijk kan zijn binnen productieomgevingen waar "
+                "infrastructuurkosten en geheugenverbruik een rol spelen. De grafiek combineert retrievalkwaliteit met throughput "
+                "door Recall@10 af te zetten tegen queries per seconde. Hogere posities betekenen betere retrievaldekking, "
+                "terwijl posities verder naar rechts wijzen op hogere snelheid en lagere latency."
+            ),
+
+            throughput_interpretation_text=(
+                "<b>Praktische interpretatie:</b> Gebruik deze resultaten niet alleen om de snelste of meest accurate retriever "
+                "te kiezen, maar om te bepalen welke retrievalarchitectuur het beste aansluit bij de praktische eisen van de "
+                "toepassing. Een retriever rechtsboven in de grafiek combineert hoge retrievalkwaliteit met hoge throughput en "
+                "vormt daardoor meestal de beste algemene balans voor real-time RAG-systemen. Een retriever kan echter bewust "
+                "meer querytijd gebruiken om betere ranking of hogere retrievaldekking te behalen. In productieomgevingen moet "
+                "daarom rekening worden gehouden met latency, schaalbaarheid, hardwarekosten en onderhoudscomplexiteit. "
+                "Een iets lagere retrievalscore kan acceptabel zijn wanneer een systeem aanzienlijk sneller, goedkoper of "
+                "eenvoudiger schaalbaar blijft."
+            ),
         )

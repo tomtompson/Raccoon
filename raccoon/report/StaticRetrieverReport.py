@@ -16,6 +16,8 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Tabl
 import platform
 import torch
 import psutil
+import os
+import random
 
 class StaticRetrieverReport:
     def generate_report(
@@ -148,7 +150,7 @@ class StaticRetrieverReport:
         story += self._table("Configuration", self._config_rows(retriever, config), styles)
         story += self._table("Result Summary", self._summary(results), styles)
         story += self._table("Retrieval Metrics", rows, styles, headers=headers)
-        story += self._table("Retriever Metrics", self._flatten(metrics)[: self._int(config.get("metric_rows", 12), 12)], styles)
+        story += self._table("Retriever Metrics", self._flatten(metrics)[: self._int(config.get("metric_rows", 20), 20)], styles)
         story += self._table("Reranker", self._reranker_rows(retriever), styles)
         story += self._table("Rerank Metrics", self._flatten(rerank_metrics), styles)
         story += self._table("Rerank Retrieval Metrics", rerank_rows, styles, headers=rerank_headers)
@@ -224,9 +226,13 @@ class StaticRetrieverReport:
 
     def _corpus_summary(self, retrievers: list[Any], styles: dict[str, Any]) -> list[Any]:
         rows = self._corpus_rows(retrievers)
+        raw_queries: dict = getattr(retrievers[0], "queries", {}) or {}
+        queries = random.sample(list(raw_queries.values()), min(len(raw_queries), 3)) if raw_queries else []
         if not rows:
             return []
-        return [Paragraph("Corpus Summary", styles["Section"])] + self._table("Corpus and Queries", rows, styles)
+        return ([Paragraph("Corpus Summary", styles["Section"])] + self._table("Corpus and Queries", rows, styles) + 
+        [Paragraph("Sample Query", styles["Subsection"])] 
+        + [Paragraph(self._esc(self._query_text(query)), styles["Body"]) for query in queries]) + [Spacer(1, 16)]
 
     def _machine_summary(self, styles: dict[str, Any]) -> list[Any]:
         ram_gb = round(psutil.virtual_memory().total / (1024 ** 3), 2)
@@ -234,7 +240,7 @@ class StaticRetrieverReport:
         rows = [
             ("System", platform.system()),
             ("Processor", platform.processor()),
-            ("CPU", platform.processor()),
+            ("Cores", os.cpu_count()),
             ("RAM (GB)", ram_gb),
             ("Python version", platform.python_version()),
         ]
@@ -324,28 +330,43 @@ class StaticRetrieverReport:
             story += [
             self._overlap_grouped_bar_chart(metric_maps, chart_metrics),
             Spacer(1, 6),]
-        
-
-        
 
         story += [
             *self._metric_explanation("Retrieval Metrics", styles),
-            Spacer(1, 10),
+            Spacer(1, 110),
         ]
+        
+        practical_rows = self._practical_limit_rows(retrievers, config)
+        if practical_rows:
+            story += [
+                Paragraph("Practical Limitations and Runtime Trade-offs", styles["Subsection"]),
+                self._practical_limit_table(practical_rows, styles),
+                Spacer(1, 10),
+            ]
+
+            quality_speed_values = self._quality_speed_values(retrievers, config)
+            if quality_speed_values:
+                story += [
+                    Paragraph("Quality versus Query Throughput", styles["Subsection"]),
+                    self._quality_speed_chart(quality_speed_values),
+                ]
+            
+                story += [Paragraph(self.text_class.throughput_text, styles["Note"]), Spacer(1, 8)]
+                story += [Paragraph(self.text_class.throughput_interpretation_text, styles["Note"]), Spacer(1, 8)]
 
         index_values = self._runtime_values(retrievers, "index_time")
         query_values = self._runtime_values(retrievers, "query_time")
 
         if index_values:
             story += [
-                Paragraph("Total Index Time (seconds)", styles["Subsection"]),
+                Paragraph(f"Total Index Time (seconds) ({len(retrievers[0].corpus)} docs)", styles["Subsection"]),
                 self._bar_chart(index_values),
                 Spacer(1, 10),
             ]
 
         if query_values:
             story += [
-                Paragraph("Total Query Time (seconds)", styles["Subsection"]),
+                Paragraph(f"Total Query Time (seconds) ({len(retrievers[0].queries)} queries)", styles["Subsection"]),
                 self._bar_chart(query_values),
                 Spacer(1, 10),
             ]
@@ -353,13 +374,237 @@ class StaticRetrieverReport:
         rerank_values = self._rerank_values(retrievers, "total_wall_time_sec")
         if rerank_values:
             story += [
-                Paragraph("Rerank Time (seconds)", styles["Subsection"]),
+                Paragraph(f"Rerank Time (seconds) ({retrievers[0].reranker.top_k} - docs / {len(retrievers[0].queries)} - queries )", styles["Subsection"]),
                 self._bar_chart(rerank_values),
                 Spacer(1, 8),
             ]
 
         return story + [Spacer(1, 4)] if len(story) > 1 else []
 
+    def _practical_limit_rows(
+        self,
+        retrievers: list[Any],
+        config: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+
+        for retriever in retrievers:
+            name = self._name(retriever)
+            retriever_type = getattr(retriever, "retriever_type", "")
+
+            retrieval_metrics = getattr(retriever, "retrieval_metrics", {}) or {}
+            base_metrics = retrieval_metrics.get(retriever_type, {}) if retriever_type else {}
+            metric_rows = dict(self._metric_rows(base_metrics, config))
+
+            ndcg_10 = self._number(metric_rows.get("NDCG@10"))
+            recall_10 = self._number(metric_rows.get("Recall@10"))
+
+            metrics = getattr(retriever, "metrics", {}) or {}
+            index_time = self._time_in_seconds(metrics.get("index_time"))
+            query_time = self._time_in_seconds(metrics.get("query_time"))
+
+            query_search = (
+                metrics.get("query_time", {}).get("search", {})
+                if isinstance(metrics.get("query_time"), dict)
+                else {}
+            )
+
+            qps = self._number(query_search.get("queries_per_second"))
+            time_per_query = self._number(query_search.get("time_per_query_in_seconds"))
+            storage_mb = self._storage_mb(metrics)
+
+            corpus_count = len(getattr(retriever, "corpus", {}) or {})
+            dps = corpus_count / index_time if index_time and corpus_count else None
+
+            rows.append(
+                {
+                    "name": name,
+                    "ndcg_10": ndcg_10,
+                    "recall_10": recall_10,
+                    "index_time": index_time,
+                    "query_time": query_time,
+                    "time_per_query": time_per_query,
+                    "qps": qps,
+                    "storage_mb": storage_mb,
+                    "dps": dps,
+                }
+            )
+
+        return rows
+    def _practical_limit_table(
+        self,
+        rows: list[dict[str, Any]],
+        styles: dict[str, Any],
+    ) -> Table:
+        headers = [
+            "Retriever",
+            "Query Time",
+            "Queries/Sec",
+            "Index Time",
+            "Document/Sec",
+            "Storage MB",
+        ]
+
+        data = [
+            [Paragraph(header, styles["HeaderCell"]) for header in headers]
+        ]
+
+        for row in rows:
+            data.append(
+                [
+                    Paragraph(self._esc(row["name"]), styles["Cell"]),
+                    Paragraph(self._esc(self._format_seconds(row["query_time"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["qps"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format_seconds(row["index_time"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["dps"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["storage_mb"])), styles["Cell"]),
+                ]
+            )
+
+        table = Table(
+            data,
+        )
+
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F9FAFB")),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+
+        return table
+
+    def _quality_speed_values(
+        self,
+        retrievers: list[Any],
+        config: dict[str, Any],
+    ) -> list[tuple[str, float, float]]:
+        values = []
+
+        for row in self._practical_limit_rows(retrievers, config):
+            qps = self._number(row.get("qps"))
+            recall = self._number(row.get("recall_10"))
+
+            if qps is not None and recall is not None:
+                values.append((row["name"], qps, recall))
+
+        return values
+
+    def _quality_speed_chart(self, values: list[tuple[str, float, float]]) -> Drawing:
+        width = 100 * mm
+        height = 80 * mm
+        left = 5 * mm
+        bottom = 5 * mm
+        plot_width = 170 * mm
+        plot_height = 70 * mm
+
+        drawing = Drawing(width, height)
+
+        max_qps = max([qps for _, qps, _ in values] + [1.0])
+        max_recall = max([recall for _, _, recall in values] + [1.0])
+
+
+        drawing.add(String(-20, 20 + plot_height, "Recall@10", fontSize=7,fontName="Helvetica-Bold"))
+        drawing.add(String(475, -5, "Queries/sec", fontSize=7,fontName="Helvetica-Bold"))
+
+        drawing.add(Rect(left, bottom, plot_width, plot_height, fillColor=None, strokeColor=colors.HexColor("#D1D5DB")))
+        # Y axis labels (Recall)
+        for i in range(6):
+            value = max_recall * (i / 5)
+            y = bottom + plot_height * (i / 5)
+
+            drawing.add(
+                String(
+                    left - 18,
+                    y - 2,
+                    f"{value:.2f}",
+                    fontSize=6,
+                    fillColor=colors.HexColor("#374151"),
+                )
+            )
+
+            drawing.add(
+                Rect(
+                    left - 2,
+                    y,
+                    2,
+                    0.3,
+                    fillColor=colors.HexColor("#9CA3AF"),
+                    strokeColor=None,
+                )
+            )
+
+
+        # X axis labels (Queries/sec)
+        for i in range(6):
+            value = max_qps * (i / 5)
+            x = left + plot_width * (i / 5)
+
+            drawing.add(
+                String(
+                    x - 5,
+                    bottom - 10,
+                    f"{value:.1f}",
+                    fontSize=6,
+                    fillColor=colors.HexColor("#374151"),
+                )
+            )
+
+            drawing.add(
+                Rect(
+                    x,
+                    bottom - 2,
+                    0.3,
+                    2,
+                    fillColor=colors.HexColor("#9CA3AF"),
+                    strokeColor=None,
+                )
+            )
+
+        palette = [
+            colors.HexColor("#2563EB"),
+            colors.HexColor("#059669"),
+            colors.HexColor("#D97706"),
+            colors.HexColor("#7C3AED"),
+            colors.HexColor("#DC2626"),
+            colors.HexColor("#0891B2"),
+        ]
+
+        for index, (name, qps, recall) in enumerate(values):
+            x = left + plot_width * (qps / max_qps)
+            y = bottom + plot_height * (recall / max_recall)
+
+            drawing.add(
+                Rect(
+                    x - 2,
+                    y - 2,
+                    4,
+                    4,
+                    fillColor=palette[index % len(palette)],
+                    strokeColor=None,
+                )
+            )
+            drawing.add(
+                String(
+                    x + 4,
+                    y - 2,
+                    self._truncate(name, 24),
+                    fontSize=6,
+                    fillColor=colors.HexColor("#111827"),
+                    fontName="Helvetica-Bold",
+                )
+            )
+
+        return drawing
     
 
     def _comparison_metric_maps_with_rerank(
@@ -568,25 +813,6 @@ class StaticRetrieverReport:
 
         return [metric for metric in selected if metric in available]
 
-    def _metric_comparison(
-        self,
-        title: str,
-        metric_maps: list[tuple[str, dict[str, float]]],
-        metrics: list[str],
-        styles: dict[str, Any],
-    ) -> list[Any]:
-        if not metrics or not any(any(metric in values for metric in metrics) for _, values in metric_maps):
-            return []
-
-        return [
-            Paragraph(self._esc(title), styles["Subsection"]),
-            self._comparison_table(metric_maps, metrics, styles),
-            Spacer(1, 6),
-            self._grouped_bar_chart(metric_maps, metrics),
-            *self._metric_explanation(title, styles),
-            Spacer(1, 10),
-        ]
-
     def _metric_explanation(self, title: str, styles: dict[str, Any]) -> list[Any]:
         if title != "Retrieval Metrics":
             return []
@@ -706,6 +932,36 @@ class StaticRetrieverReport:
             if seconds is not None:
                 return seconds
         return None
+
+    def _storage_mb(self, metrics: dict[str, Any]) -> float | None:
+        flat = dict(self._flatten(metrics))
+
+        for key in (
+            "index_time.indexing.size_in_mb",
+            "index_time.encoding.size_in_mb",
+            "index_time.indexing.size_mb",
+            "index_time.encoding.size_mb",
+        ):
+            value = self._number(flat.get(key))
+            if value is not None:
+                return value
+
+        for key in (
+            "index_time.indexing.size_in_bytes",
+            "index_time.encoding.size_in_bytes",
+        ):
+            value = self._number(flat.get(key))
+            if value is not None:
+                return value / (1024 * 1024)
+
+        return None
+
+    def _format_seconds(self, value: Any) -> str:
+        number = self._number(value)
+        if number is None:
+            return "-"
+        return f"{number:.4f}s".rstrip("0").rstrip(".")
+
 
     def _rerank_values(self, retrievers: list[Any], metric_key: str) -> list[tuple[str, float]]:
         values = []
