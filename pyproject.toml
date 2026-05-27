@@ -28,6 +28,7 @@ dependencies = [
     "igraph>=1.0.0",
     "reportlab>=4.5.1",
     "faiss-cpu>=1.13.2",
+    "psutil>=7.2.2",
 ]
 
 [[tool.setuptools.packages.find]]

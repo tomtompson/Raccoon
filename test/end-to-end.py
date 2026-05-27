@@ -18,16 +18,16 @@ import torch
 
 
 SOURCE_PATH_RAW = Path("data/raw/rechtspraak")
-OUTPUT_PATH_CHUNKS = Path("data/processed/chunks_recht")
+OUTPUT_PATH_CHUNKS = Path("data/processed/chunks_600")
 
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
 
 QUERY_PROMPT_PATH = "prompts/query_scenarios/query_generation_ambiguous.txt"
-OUTPUT_PATH_SYNTH = "data/processed/rechtspraken/beir_600"
+OUTPUT_PATH_SYNTH = "data/processed/rechtspraken/beir_600_ambiguous"
 
-RESULT_FILE_PATH = "data/processed/rechtspraken/beir_600/eval_results.json"
+RESULT_FILE_PATH = "data/processed/rechtspraken/beir_600_ambiguous/eval_results.json"
 
-INPUT_PATH = Path("data/processed/rechtspraken/beir_600")
+INPUT_PATH = Path("data/processed/rechtspraken/beir_600_ambiguous")
 
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
 TOP_K = 20
@@ -36,16 +36,16 @@ TOP_K = 20
 
 TOP_K = 20
 MODEL_ID = "snowflake/snowflake-arctic-embed-l-v2.0"
-MAX_LENGHT = 206
+MAX_LENGHT = 512
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 QUERY_PROMPT_NAME = "query"
 PASSAGE_PROMPT_NAME = "document"
-ENCODE_PATH = "data/processed/rechtspraken/beir_600/encode/"
+ENCODE_PATH = "data/processed/rechtspraken/beir_600_ambiguous/encode/"
 
 RETRIEVERS = []
 
 
-PDF_PATH = Path("data/processed/rechtspraken/report.pdf")
+PDF_PATH = Path("data/processed/rechtspraken/report_ambiguous.pdf")
 
 
 def main() -> None:
@@ -74,42 +74,42 @@ def main() -> None:
         "candidate_judging": "prompts/example_rechtspraak/candidate_judging.txt",
         "distribution_validation": "prompts/example_rechtspraak/distribution_validation.txt",
     },)
-    # parent = synth.load_chunks(OUTPUT_PATH_CHUNKS / "parent_chunks.json")
-    # child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "child_chunks.json")
+    parent = synth.load_chunks(OUTPUT_PATH_CHUNKS / "parent_chunks.json")
+    child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "chunks.json")
 
-    # synth.synthesize_beir(
-    #     parent_chunks=parent,
-    #     child_chunks=child,
-    #     output_dir=OUTPUT_PATH_SYNTH,
-    #     embedding_id="Snowflake/snowflake-arctic-embed-l-v2.0",
-    #     embedding_kwargs= {},
-    #     query_model="qwen3:8b",
-    #     query_validation_model="qwen3:8b",
-    #     judge_model="qwen3:8b",
-    #     qrel_validation_model="qwen3:8b",
-    #     queries_per_parent_to_generate=2,
-    #     max_queries_to_keep_per_parent=1,
-    #     dense_k=15,
-    #     bm25_k=15,
-    #     rrf_top_k=15,
-    #     same_topic_negative_k=3,
-    #     random_negative_k=3,
-    #     min_score_to_keep_in_qrels=2,
-    #     max_qrels_per_query=3,
-    #     include_source_parent_children=True,
-    #     parent_text_limit_prompt=3000,
-    #     candidate_text_limit_prompt=800,
-    #     max_estimated_tokens= 5000,
-    #     overwrite_corpus=False,
-    #     max_parents=None,
-    #     random_seed=42,
-    #     target_queries_per_source=1,
-    #     shuffle_parents=True,
-    #     reranker_id= RERANKER_ID,
-    #     #None,
-    #     rerank_pool_size= 70,
-    #     rerank_keep_top_k=40,
-    # )
+    synth.synthesize_beir(
+        parent_chunks=parent,
+        child_chunks=child,
+        output_dir=OUTPUT_PATH_SYNTH,
+        embedding_id="Snowflake/snowflake-arctic-embed-l-v2.0",
+        embedding_kwargs= {},
+        query_model="qwen3:8b",
+        query_validation_model="qwen3:8b",
+        judge_model="qwen3:8b",
+        qrel_validation_model="qwen3:8b",
+        queries_per_parent_to_generate=2,
+        max_queries_to_keep_per_parent=1,
+        dense_k=25,
+        bm25_k=15,
+        rrf_top_k=15,
+        same_topic_negative_k=3,
+        random_negative_k=3,
+        min_score_to_keep_in_qrels=2,
+        max_qrels_per_query=3,
+        include_source_parent_children=True,
+        parent_text_limit_prompt=3000,
+        candidate_text_limit_prompt=800,
+        max_estimated_tokens= 5000,
+        overwrite_corpus=False,
+        max_parents=None,
+        random_seed=42,
+        target_queries_per_source=1,
+        shuffle_parents=True,
+        reranker_id= RERANKER_ID,
+        #None,
+        rerank_pool_size= 70,
+        rerank_keep_top_k=50,
+    )
 
 
 
@@ -120,7 +120,7 @@ def main() -> None:
         model_id=RERANKER_ID,
         top_k=TOP_K,
         batch_size=16,
-        max_lenght=512,
+        max_length=MAX_LENGHT,
         device=DEVICE,
     )
 
@@ -132,7 +132,7 @@ def main() -> None:
 
     description = synth.generate_description_of_ds(
         model="qwen3:8b",
-        language="dutch",
+        language="english",
         corpus=corpus,
         queries=queries,
         description_length=250,
@@ -245,10 +245,10 @@ def main() -> None:
     "embedding_model_name": "snowflake/snowflake-arctic-embed-l-v2.0",
     "spacy_model_name": "nl_core_news_sm",
     "dataset_name": name,
-    "cache_path": "data/processed/rechtspraken/beir_600/linear_rag_cache",
+    "cache_path": "data/processed/rechtspraken/beir_600_ambiguous/linear_rag_cache",
 
     "device": DEVICE,
-    "max_seq_length": 512,
+    "max_seq_length": MAX_LENGHT,
 
     # Match DenseRetriever more closely
     "embed_batch_size": 128,
@@ -360,7 +360,7 @@ def main() -> None:
     },
     }
     report = StaticRetrieverReport()
-    report.generate_report("Retriever Performance Report", description, RETRIEVERS ,output_path=PDF_PATH, language="dutch", config=report_config)
+    report.generate_report("Retriever Performance Report", description, RETRIEVERS ,output_path=PDF_PATH, language="english", config=report_config)
 
 
 

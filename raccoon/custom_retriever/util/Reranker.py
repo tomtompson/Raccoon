@@ -9,7 +9,7 @@ class Reranker():
             model_id: str,
             top_k: int,
             batch_size: int,
-            max_lenght: int,
+            max_length: int,
             device = "cuda",
             config: dict | None = None
     ):
@@ -17,7 +17,7 @@ class Reranker():
         self.model_id = model_id
         self.top_k = top_k
         self.batch_size = batch_size
-        self.max_length = max_lenght
+        self.max_length = max_length
         self.device = device
         self._load_reranker()
         self.rerank_retrieval_metrics = {}        

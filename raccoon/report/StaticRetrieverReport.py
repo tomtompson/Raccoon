@@ -13,7 +13,9 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-
+import platform
+import torch
+import psutil
 
 class StaticRetrieverReport:
     def generate_report(
@@ -79,7 +81,7 @@ class StaticRetrieverReport:
 
         story += [
             Paragraph(self._esc(title), styles["Title"]),
-            Paragraph(datetime.datetime.now().strftime("Generated %Y-%m-%d %H:%M"), styles["Body"]),
+            Paragraph(datetime.datetime.now().strftime("Generated %Y-%m-%d %H:%M"), styles["MutedCenter"]),
             Spacer(1, 6),
             *self._intro(config, len(retrievers), styles),
         ]
@@ -89,6 +91,8 @@ class StaticRetrieverReport:
                 Paragraph(self._esc(ds_description.replace('"', '')), styles["Body"]),
                 Spacer(1, 6),
             ]
+
+        story += self._machine_summary(styles)
 
         if not retrievers:
             story.append(Paragraph("No retriever results were provided.", styles["Body"]))
@@ -224,12 +228,33 @@ class StaticRetrieverReport:
             return []
         return [Paragraph("Corpus Summary", styles["Section"])] + self._table("Corpus and Queries", rows, styles)
 
+    def _machine_summary(self, styles: dict[str, Any]) -> list[Any]:
+        ram_gb = round(psutil.virtual_memory().total / (1024 ** 3), 2)
+
+        rows = [
+            ("System", platform.system()),
+            ("Processor", platform.processor()),
+            ("CPU", platform.processor()),
+            ("RAM (GB)", ram_gb),
+            ("Python version", platform.python_version()),
+        ]
+
+        if torch.cuda.is_available():
+            rows.extend([
+                ("CUDA", f"Available ({torch.cuda.device_count()} GPU(s))"),
+                ("GPU Name", torch.cuda.get_device_name(0)),
+            ])
+        else:
+            rows.append(("CUDA", "No CUDA available"))
+            
+        return [Paragraph("Machine Summary", styles["Section"])] + self._table("Machine Summary", rows, styles,)
+
     def _intro(self, config: dict[str, Any], retriever_count: int, styles: dict[str, Any]) -> list[Any]:
         retriever_word = "retriever" if retriever_count == 1 else "retrievers"
         intro = self.text_class.intro_text.format(retriever_count=retriever_count, retriever_word=retriever_word)
         if not self.text_class.intro_text:
             return []
-        return [Paragraph(self._esc(intro), styles["Intro"]), Spacer(1, 8)]
+        return [Paragraph(self._esc(intro), styles["Body"]), Spacer(1, 8)]
 
     def _corpus_rows(self, retrievers: list[Any]) -> list[tuple[str, Any]]:
         source = next(
