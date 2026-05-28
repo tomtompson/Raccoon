@@ -127,12 +127,32 @@ class BM25Retriever(BaseRetriever):
         self.is_ready = True
         index_latency = perf_counter() - index_start
         document_count = len(self.corpus)
+
+        storage_size_bytes = 0
+        storage_size_mb = 0.0
+
+        try:
+            stats = self.client.indices.stats(index=self.index_name)
+            print(stats)
+            storage_size_bytes = (
+                stats["indices"][self.index_name]["total"]["store"]["size_in_bytes"]
+            )
+
+            storage_size_mb = storage_size_bytes / (1024 * 1024)
+
+        except Exception:
+            print(ElasticConnectionError(f"Unable to retrieve index stats for {self.index_name} at {self.elasticsearch_url}"))
+            pass
+
+
         self.metrics["index_time"] = {
             "indexing": {
                 "time_in_seconds": index_latency,
                 "documents": document_count,
                 "docs_per_second": document_count / index_latency if index_latency else 0.0,
                 "backend": "elasticsearch",
+                "storage_size_bytes": storage_size_bytes,
+                "storage_size_mb": storage_size_mb,
             },
         }
 

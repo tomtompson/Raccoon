@@ -178,6 +178,11 @@ class Reranker():
             if total_time > 0 and total_input_tokens > 0 else 0.0
         )
 
+        queries_per_sec = (
+            len(query_ids) / total_time
+            if total_time > 0 else 0.0
+        )
+
         peak_mem = None
         if use_cuda:
             peak_mem = (
@@ -194,6 +199,7 @@ class Reranker():
         print(f"Avg time/query: {avg_time_query:.4f}s")
         print(f"Avg time/batch: {avg_time_batch:.4f}s")
         print(f"Pairs/sec: {pairs_per_sec:.2f}")
+        print(f"Queries/sec: {queries_per_sec:.2f}")
         print(f"Tokens/sec: {tokens_per_sec:.2f}")
 
         if use_cuda:
@@ -209,6 +215,7 @@ class Reranker():
             "avg_time_query_sec": round(avg_time_query, 4),
             "avg_time_batch_sec": round(avg_time_batch, 4),
             "pairs_per_sec": round(pairs_per_sec, 2),
+            "queries_per_sec": round(queries_per_sec, 2),
             "tokens_per_sec": round(tokens_per_sec, 2),
             "peak_gpu_memory_gb": round(peak_mem, 2) if peak_mem is not None else None,
         }

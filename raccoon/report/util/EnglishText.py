@@ -51,4 +51,24 @@ class EnglishText(BaseText):
                 "A slightly lower retrieval score may still be acceptable when the system remains substantially faster, cheaper, "
                 "or easier to scale."
             ),
+            rank_distribution_text=(
+                "<b>Rank distribution guide:</b> Rank distribution shows where the first relevant document appears in the "
+                "ranking for each query. Instead of only showing an overall retrieval score, this distribution makes visible "
+                "how quickly useful information becomes available to the RAG pipeline. Rank 1 means that the first returned "
+                "result is already relevant. Rank 2-3 means that relevant information is still found very early. Rank 4-10 "
+                "indicates that the retriever needs to go deeper into the ranking before useful evidence appears. Rank 11+ "
+                "means that relevant information is found relatively late, increasing the chance that the language model "
+                "receives weaker or less focused context. The average first rank summarizes how early the first relevant "
+                "document usually appears; lower values indicate stronger ranking performance."
+            ),
+
+            rank_distribution_interpretation_text=(
+                "<b>Practical interpretation:</b> A retriever with many Rank 1 and Rank 2-3 results generally provides more "
+                "immediately usable evidence for generation. This is especially valuable when the context window is limited "
+                "or when the generator relies heavily on the first passages in the prompt. A larger Rank 4-10 share can still "
+                "be useful, but means that relevant information is presented less prominently. A large Rank 11+ share often "
+                "suggests weaker ranking quality or a stronger need for reranking, hybrid retrieval, or better query processing. "
+                "Rank distribution therefore helps determine not only whether relevant documents are retrieved, but especially "
+                "how quickly and how visibly those documents become available to the generator."
+            ),
         )

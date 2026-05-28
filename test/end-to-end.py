@@ -74,42 +74,42 @@ def main() -> None:
         "candidate_judging": "prompts/example_rechtspraak/candidate_judging.txt",
         "distribution_validation": "prompts/example_rechtspraak/distribution_validation.txt",
     },)
-    parent = synth.load_chunks(OUTPUT_PATH_CHUNKS / "parent_chunks.json")
-    child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "chunks.json")
+    # parent = synth.load_chunks(OUTPUT_PATH_CHUNKS / "parent_chunks.json")
+    # child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "chunks.json")
 
-    synth.synthesize_beir(
-        parent_chunks=parent,
-        child_chunks=child,
-        output_dir=OUTPUT_PATH_SYNTH,
-        embedding_id="Snowflake/snowflake-arctic-embed-l-v2.0",
-        embedding_kwargs= {},
-        query_model="qwen3:8b",
-        query_validation_model="qwen3:8b",
-        judge_model="qwen3:8b",
-        qrel_validation_model="qwen3:8b",
-        queries_per_parent_to_generate=2,
-        max_queries_to_keep_per_parent=1,
-        dense_k=25,
-        bm25_k=15,
-        rrf_top_k=15,
-        same_topic_negative_k=3,
-        random_negative_k=3,
-        min_score_to_keep_in_qrels=2,
-        max_qrels_per_query=3,
-        include_source_parent_children=True,
-        parent_text_limit_prompt=3000,
-        candidate_text_limit_prompt=800,
-        max_estimated_tokens= 5000,
-        overwrite_corpus=False,
-        max_parents=None,
-        random_seed=42,
-        target_queries_per_source=1,
-        shuffle_parents=True,
-        reranker_id= RERANKER_ID,
-        #None,
-        rerank_pool_size= 70,
-        rerank_keep_top_k=50,
-    )
+    # synth.synthesize_beir(
+    #     parent_chunks=parent,
+    #     child_chunks=child,
+    #     output_dir=OUTPUT_PATH_SYNTH,
+    #     embedding_id="Snowflake/snowflake-arctic-embed-l-v2.0",
+    #     embedding_kwargs= {},
+    #     query_model="qwen3:8b",
+    #     query_validation_model="qwen3:8b",
+    #     judge_model="qwen3:8b",
+    #     qrel_validation_model="qwen3:8b",
+    #     queries_per_parent_to_generate=2,
+    #     max_queries_to_keep_per_parent=1,
+    #     dense_k=25,
+    #     bm25_k=15,
+    #     rrf_top_k=15,
+    #     same_topic_negative_k=3,
+    #     random_negative_k=3,
+    #     min_score_to_keep_in_qrels=2,
+    #     max_qrels_per_query=3,
+    #     include_source_parent_children=True,
+    #     parent_text_limit_prompt=3000,
+    #     candidate_text_limit_prompt=800,
+    #     max_estimated_tokens= 5000,
+    #     overwrite_corpus=False,
+    #     max_parents=None,
+    #     random_seed=42,
+    #     target_queries_per_source=1,
+    #     shuffle_parents=True,
+    #     reranker_id= RERANKER_ID,
+    #     #None,
+    #     rerank_pool_size= 70,
+    #     rerank_keep_top_k=50,
+    # )
 
 
 
@@ -132,7 +132,7 @@ def main() -> None:
 
     description = synth.generate_description_of_ds(
         model="qwen3:8b",
-        language="english",
+        language="dutch",
         corpus=corpus,
         queries=queries,
         description_length=250,
@@ -360,7 +360,7 @@ def main() -> None:
     },
     }
     report = StaticRetrieverReport()
-    report.generate_report("Retriever Performance Report", description, RETRIEVERS ,output_path=PDF_PATH, language="english", config=report_config)
+    report.generate_report(title = "Retriever Performance Report", ds_description = description, retrievers=RETRIEVERS, qrels=qrels, output_path=PDF_PATH, language="dutch", config=report_config)
 
 
 

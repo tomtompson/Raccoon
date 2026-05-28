@@ -38,6 +38,7 @@ class FakeRetriever:
                     "time_in_seconds": index_time,
                     "documents": 2,
                     "docs_per_second": 2 / index_time if index_time else 0.0,
+                    "size_in_mb": 50.0,
                 }
             },
             "query_time": {

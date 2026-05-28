@@ -58,4 +58,24 @@ class DutchText(BaseText):
                 "Een iets lagere retrievalscore kan acceptabel zijn wanneer een systeem aanzienlijk sneller, goedkoper of "
                 "eenvoudiger schaalbaar blijft."
             ),
+            rank_distribution_text=(
+                "<b>Uitleg rank distribution:</b> Rank distribution laat zien op welke positie het eerste relevante document "
+                "verschijnt voor iedere query. In plaats van alleen een algemene retrievalscore te tonen, maakt deze verdeling "
+                "zichtbaar hoe snel bruikbare informatie beschikbaar komt voor de RAG-pipeline. Rank 1 betekent dat direct het "
+                "eerste resultaat relevant is. Rank 2-3 betekent dat relevante informatie nog steeds zeer vroeg wordt gevonden. "
+                "Rank 4-10 geeft aan dat de retriever dieper in de ranking moet zoeken voordat bruikbaar bewijs verschijnt. "
+                "Rank 11+ betekent dat relevante informatie pas laat wordt gevonden, waardoor de kans groter wordt dat het "
+                "taalmodel minder sterke of minder gefocuste context ontvangt. De gemiddelde first rank vat samen hoe vroeg "
+                "het eerste relevante document gemiddeld verschijnt; lagere waardes duiden op sterkere rankingprestaties."
+            ),
+
+            rank_distribution_interpretation_text=(
+                "<b>Praktische interpretatie:</b> Een retriever met veel Rank 1 en Rank 2-3 resultaten levert doorgaans "
+                "directer bruikbaar bewijs voor generatie. Dit is vooral waardevol wanneer het contextvenster beperkt is of "
+                "wanneer de generator sterk afhankelijk is van de eerste passages in de prompt. Een groter aandeel Rank 4-10 "
+                "kan nog steeds bruikbaar zijn, maar betekent dat relevante informatie minder prominent wordt aangeboden. "
+                "Een groot Rank 11+ aandeel wijst vaak op zwakkere rankingkwaliteit of op een grotere behoefte aan reranking, "
+                "hybride retrieval of betere queryverwerking. Rank distribution helpt daarom niet alleen te bepalen of relevante "
+                "documenten worden gevonden, maar vooral hoe snel en hoe zichtbaar deze documenten voor de generator beschikbaar zijn."
+            ),
         )

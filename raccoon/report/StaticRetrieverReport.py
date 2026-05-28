@@ -12,7 +12,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.graphics.shapes import Drawing, Rect, String
-from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, PageBreak
 import platform
 import torch
 import psutil
@@ -25,6 +25,7 @@ class StaticRetrieverReport:
         title: str | None = None,
         ds_description: str | None = None,
         retrievers: Any | None = None,
+        qrels: Any | None = None,
         output_path: str | Path | None = None,
         config: dict[str, Any] | None = None,
         n_samples: int | None = None,
@@ -33,6 +34,7 @@ class StaticRetrieverReport:
         config = config or {}
         path = self._path(output_path)
         styles = self._styles()
+        self.qrels = qrels
         retrievers = self._list(retrievers)
         if language.lower() in ("english", "en"):
             from .util.EnglishText import EnglishText
@@ -103,6 +105,7 @@ class StaticRetrieverReport:
         story += self._corpus_summary(retrievers, styles)
         story += self._comparison(retrievers, styles, config)
 
+        story += [PageBreak(), Paragraph("Raw Results", styles["Heading2"]), Spacer(1, 12)]
         for retriever in retrievers:
             story += self._retriever_section(
                 retriever=retriever,
@@ -227,7 +230,7 @@ class StaticRetrieverReport:
     def _corpus_summary(self, retrievers: list[Any], styles: dict[str, Any]) -> list[Any]:
         rows = self._corpus_rows(retrievers)
         raw_queries: dict = getattr(retrievers[0], "queries", {}) or {}
-        queries = random.sample(list(raw_queries.values()), min(len(raw_queries), 3)) if raw_queries else []
+        queries = random.sample(list(raw_queries.values()), min(len(raw_queries), 5)) if raw_queries else []
         if not rows:
             return []
         return ([Paragraph("Corpus Summary", styles["Section"])] + self._table("Corpus and Queries", rows, styles) + 
@@ -333,7 +336,7 @@ class StaticRetrieverReport:
 
         story += [
             *self._metric_explanation("Retrieval Metrics", styles),
-            Spacer(1, 110),
+            Spacer(1, 10),
         ]
         
         practical_rows = self._practical_limit_rows(retrievers, config)
@@ -347,12 +350,16 @@ class StaticRetrieverReport:
             quality_speed_values = self._quality_speed_values(retrievers, config)
             if quality_speed_values:
                 story += [
+                    PageBreak(),
                     Paragraph("Quality versus Query Throughput", styles["Subsection"]),
                     self._quality_speed_chart(quality_speed_values),
                 ]
             
                 story += [Paragraph(self.text_class.throughput_text, styles["Note"]), Spacer(1, 8)]
                 story += [Paragraph(self.text_class.throughput_interpretation_text, styles["Note"]), Spacer(1, 8)]
+
+        story += self._rank_distribution_section(retrievers, styles, config)
+        story += self._scalability_estimates_section(retrievers, styles, config)
 
         index_values = self._runtime_values(retrievers, "index_time")
         query_values = self._runtime_values(retrievers, "query_time")
@@ -429,6 +436,36 @@ class StaticRetrieverReport:
                     "dps": dps,
                 }
             )
+        
+            # reranker 
+            retrieval_metrics = getattr(retriever, "retrieval_metrics", {}) or {}
+            rerank_metrics = retrieval_metrics.get("rerank", {}) or {}
+            metric_rows = dict(self._metric_rows(rerank_metrics, config))
+
+            ndcg_10 = self._number(metric_rows.get("NDCG@10"))
+            recall_10 = self._number(metric_rows.get("Recall@10"))
+
+            metrics = getattr(retriever, "rerank_metrics", {}) or {}
+            query_time_rerank = self._number(metrics.get("total_wall_time_sec"))
+
+            time_per_query_rerank = self._number(metrics.get("avg_time_query_sec"))
+
+            combined_time = time_per_query + time_per_query_rerank
+            combined_qps = 1 / combined_time if combined_time else None
+
+            rows.append(
+                {
+                    "name": name + " + rerank",
+                    "ndcg_10": ndcg_10,
+                    "recall_10": recall_10,
+                    "index_time": index_time,
+                    "query_time": query_time_rerank + query_time if query_time_rerank and query_time else None,
+                    "time_per_query": time_per_query + time_per_query_rerank if time_per_query and time_per_query_rerank else None,
+                    "qps": combined_qps,
+                    "storage_mb": storage_mb,
+                    "dps": dps,
+                }
+            )
 
         return rows
     def _practical_limit_table(
@@ -442,7 +479,7 @@ class StaticRetrieverReport:
             "Queries/Sec",
             "Index Time",
             "Document/Sec",
-            "Storage MB",
+            "Storage",
         ]
 
         data = [
@@ -453,11 +490,11 @@ class StaticRetrieverReport:
             data.append(
                 [
                     Paragraph(self._esc(row["name"]), styles["Cell"]),
-                    Paragraph(self._esc(self._format_seconds(row["query_time"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format_time(row["query_time"])), styles["Cell"]),
                     Paragraph(self._esc(self._format(row["qps"])), styles["Cell"]),
-                    Paragraph(self._esc(self._format_seconds(row["index_time"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format_time(row["index_time"])), styles["Cell"]),
                     Paragraph(self._esc(self._format(row["dps"])), styles["Cell"]),
-                    Paragraph(self._esc(self._format(row["storage_mb"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format_storage(row["storage_mb"])), styles["Cell"]),
                 ]
             )
 
@@ -518,9 +555,9 @@ class StaticRetrieverReport:
 
         drawing.add(Rect(left, bottom, plot_width, plot_height, fillColor=None, strokeColor=colors.HexColor("#D1D5DB")))
         # Y axis labels (Recall)
-        for i in range(6):
-            value = max_recall * (i / 5)
-            y = bottom + plot_height * (i / 5)
+        for i in range(24):
+            value = max_recall * (i / 23) 
+            y = bottom + plot_height * (i / 23) 
 
             drawing.add(
                 String(
@@ -543,12 +580,11 @@ class StaticRetrieverReport:
                 )
             )
 
-
         # X axis labels (Queries/sec)
-        for i in range(6):
-            value = max_qps * (i / 5)
-            x = left + plot_width * (i / 5)
-
+        for i in range(24):
+            x_axis_max = max_qps * 1.2
+            value = x_axis_max * (i / 23)
+            x = left + plot_width * (i / 23) 
             drawing.add(
                 String(
                     x - 5,
@@ -580,7 +616,7 @@ class StaticRetrieverReport:
         ]
 
         for index, (name, qps, recall) in enumerate(values):
-            x = left + plot_width * (qps / max_qps)
+            x = left + plot_width * (qps / x_axis_max) 
             y = bottom + plot_height * (recall / max_recall)
 
             drawing.add(
@@ -597,7 +633,7 @@ class StaticRetrieverReport:
                 String(
                     x + 4,
                     y - 2,
-                    self._truncate(name, 24),
+                    name,
                     fontSize=6,
                     fillColor=colors.HexColor("#111827"),
                     fontName="Helvetica-Bold",
@@ -606,6 +642,495 @@ class StaticRetrieverReport:
 
         return drawing
     
+
+    def _rank_distribution_section(
+        self,
+        retrievers: list[Any],
+        styles: dict[str, Any],
+        config: dict[str, Any],
+    ) -> list[Any]:
+        rows = self._rank_distribution_rows(retrievers, config)
+        if not rows:
+            return []
+
+        return [
+            Paragraph("Rank Distribution", styles["Subsection"]),
+            self._rank_distribution_table(rows, styles),
+            Spacer(1, 6),
+            self._rank_distribution_chart(rows),
+            Spacer(1, 10),
+            Paragraph(self.text_class.rank_distribution_text, styles["Note"]),
+            Paragraph(self.text_class.rank_distribution_interpretation_text, styles["Note"]),
+        ]
+
+    def _rank_distribution_rows(
+        self,
+        retrievers: list[Any],
+        config: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        rows = []
+
+        for retriever in retrievers:
+            results = getattr(retriever, "results", {}) or {}
+
+            if not self.qrels or not results:
+                continue
+
+            rank_values = []
+
+            for query_id, doc_scores in results.items():
+                relevant_docs = self.qrels.get(str(query_id), self.qrels.get(query_id, {}))
+
+                if isinstance(relevant_docs, dict):
+                    relevant_docs = {
+                        str(doc_id)
+                        for doc_id, score in relevant_docs.items()
+                        if self._number(score) and self._number(score) > 0
+                    }
+                elif isinstance(relevant_docs, (list, set, tuple)):
+                    relevant_docs = {str(doc_id) for doc_id in relevant_docs}
+                else:
+                    continue
+
+                hits = self._hits(doc_scores)
+
+                first_rank = None
+                for rank, (doc_id, _score) in enumerate(hits, start=1):
+                    if str(doc_id) in relevant_docs:
+                        first_rank = rank
+                        break
+
+                if first_rank is not None:
+                    rank_values.append(first_rank)
+
+            if not rank_values:
+                continue
+
+            total = len(rank_values) + 1  # +1 to avoid division by zero and indicate at least one relevant query
+
+            rows.append(
+                {
+                    "name": self._name(retriever),
+                    "queries_with_relevant": total,
+                    "rank_1": sum(1 for rank in rank_values if rank == 1),
+                    "rank_2_3": sum(1 for rank in rank_values if 2 <= rank <= 3),
+                    "rank_4_10": sum(1 for rank in rank_values if 4 <= rank <= 10),
+                    "rank_11_plus": sum(1 for rank in rank_values if rank > 10),
+                    "avg_first_rank": sum(rank_values) / total if total else None,
+                }
+            )
+
+            # Rerank results
+
+            rerank_results = getattr(retriever, "rerank_results", {}) or {}
+
+            if not self.qrels or not rerank_results:
+                continue
+
+            rank_values = []
+
+            for query_id, doc_scores in rerank_results.items():
+                relevant_docs = self.qrels.get(str(query_id), self.qrels.get(query_id, {}))
+
+                if isinstance(relevant_docs, dict):
+                    relevant_docs = {
+                        str(doc_id)
+                        for doc_id, score in relevant_docs.items()
+                        if self._number(score) and self._number(score) > 0
+                    }
+                elif isinstance(relevant_docs, (list, set, tuple)):
+                    relevant_docs = {str(doc_id) for doc_id in relevant_docs}
+                else:
+                    continue
+
+                hits = self._hits(doc_scores)
+
+                first_rank = None
+                for rank, (doc_id, _score) in enumerate(hits, start=1):
+                    if str(doc_id) in relevant_docs:
+                        first_rank = rank
+                        break
+
+                if first_rank is not None:
+                    rank_values.append(first_rank)
+
+            if not rank_values:
+                continue
+
+            total = len(rank_values) + 1  # +1 to avoid division by zero and indicate at least one relevant query
+
+            rows.append(
+                {
+                    "name": self._name(retriever )+ " + (rerank)",
+                    "queries_with_relevant": total,
+                    "rank_1": sum(1 for rank in rank_values if rank == 1),
+                    "rank_2_3": sum(1 for rank in rank_values if 2 <= rank <= 3),
+                    "rank_4_10": sum(1 for rank in rank_values if 4 <= rank <= 10),
+                    "rank_11_plus": sum(1 for rank in rank_values if rank > 10),
+                    "avg_first_rank": sum(rank_values) / total if total else None,
+                }
+            )
+
+        return rows
+
+    def _rank_distribution_table(
+        self,
+        rows: list[dict[str, Any]],
+        styles: dict[str, Any],
+    ) -> Table:
+        headers = [
+            "Retriever",
+            "Queries",
+            "Rank 1",
+            "Rank 2-3",
+            "Rank 4-10",
+            "Rank 11+",
+            "Avg First Rank",
+        ]
+
+        data = [[Paragraph(header, styles["HeaderCell"]) for header in headers]]
+
+        for row in rows:
+            data.append(
+                [
+                    Paragraph(self._esc(row["name"]), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["queries_with_relevant"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["rank_1"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["rank_2_3"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["rank_4_10"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["rank_11_plus"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["avg_first_rank"])), styles["Cell"]),
+                ]
+            )
+
+        table = Table(data, hAlign="LEFT")
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F9FAFB")),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        return table
+
+    def _rank_distribution_chart(self, rows: list[dict[str, Any]]) -> Drawing:
+        width = 170 * mm
+        row_height = 14
+        label_width = 52 * mm
+        bar_width = 95 * mm
+        height = max(28, 12 + row_height * len(rows))
+
+        drawing = Drawing(width, height)
+
+        colors_by_bucket = {
+            "rank_1": colors.HexColor("#070d59"),
+            "rank_2_3": colors.HexColor("#059669"),
+            "rank_4_10": colors.HexColor("#D97706"),
+            "rank_11_plus": colors.HexColor("#DC2626"),
+        }
+
+        labels_by_bucket = {
+            "rank_1": "1",
+            "rank_2_3": "2-3",
+            "rank_4_10": "4-10",
+            "rank_11_plus": "11+",
+        }
+
+        y = height - 14
+
+        for row in rows:
+            name = row["name"]
+            total = max(1, int(row.get("queries_with_relevant") or 0))
+
+            drawing.add(
+                String(
+                    0,
+                    y,
+                    name,
+                    fontSize=7,
+                    fillColor=colors.HexColor("#111827"),
+                )
+            )
+
+            x = label_width
+
+            for bucket in ("rank_1", "rank_2_3", "rank_4_10", "rank_11_plus"):
+                count = int(row.get(bucket) or 0)
+                segment_width = bar_width * (count / total)
+
+                if segment_width > 0:
+                    drawing.add(
+                        Rect(
+                            x,
+                            y - 3,
+                            segment_width,
+                            6,
+                            fillColor=colors_by_bucket[bucket],
+                            strokeColor=None,
+                        )
+                    )
+
+                x += segment_width
+
+            drawing.add(
+                Rect(
+                    label_width,
+                    y - 3,
+                    bar_width,
+                    6,
+                    fillColor=None,
+                    strokeColor=colors.HexColor("#D1D5DB"),
+                )
+            )
+
+            drawing.add(
+                String(
+                    label_width + bar_width + 4,
+                    y - 2,
+                    f"avg {self._format(row.get('avg_first_rank'))}",
+                    fontSize=6,
+                    fillColor=colors.HexColor("#374151"),
+                )
+            )
+
+            y -= row_height
+
+        legend_y = 2
+        legend_x = label_width
+
+        for bucket in ("rank_1", "rank_2_3", "rank_4_10", "rank_11_plus"):
+            drawing.add(
+                Rect(
+                    legend_x,
+                    legend_y,
+                    5,
+                    5,
+                    fillColor=colors_by_bucket[bucket],
+                    strokeColor=None,
+                )
+            )
+            drawing.add(
+                String(
+                    legend_x + 7,
+                    legend_y,
+                    labels_by_bucket[bucket],
+                    fontSize=6,
+                    fillColor=colors.HexColor("#374151"),
+                )
+            )
+            legend_x += 24
+
+        return drawing
+
+    def _scalability_estimates_section(
+        self,
+        retrievers: list[Any],
+        styles: dict[str, Any],
+        config: dict[str, Any],
+    ) -> list[Any]:
+        rows = self._scalability_estimate_rows(retrievers, config)
+        if not rows:
+            return []
+
+        return [
+            Paragraph("Scalability Estimates", styles["Subsection"]),
+            self._scalability_estimates_table(rows, styles),
+            Spacer(1, 6),
+            self._scalability_chart(rows),
+            Spacer(1, 10),
+        ]
+
+    def _scalability_estimate_rows(
+        self,
+        retrievers: list[Any],
+        config: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        target_docs = self._int(config.get("scalability_target_docs", 100_000_0), 100_000_0)
+        target_queries = self._int(config.get("scalability_target_queries", 100_000), 100_000)
+
+        rows: list[dict[str, Any]] = []
+
+        for retriever in retrievers:
+            metrics = getattr(retriever, "metrics", {}) or {}
+
+            corpus_count = len(getattr(retriever, "corpus", {}) or {})
+            query_count = len(getattr(retriever, "queries", {}) or {})
+
+            index_time = self._time_in_seconds(metrics.get("index_time"))
+            query_time = self._time_in_seconds(metrics.get("query_time"))
+            storage_mb = self._storage_mb(metrics)
+
+            if not corpus_count and not query_count:
+                continue
+
+            estimated_index_time = (
+                index_time * (target_docs / corpus_count)
+                if index_time is not None and corpus_count
+                else None
+            )
+
+            estimated_query_time = (
+                query_time * (target_queries / query_count)
+                if query_time is not None and query_count
+                else None
+            )
+
+            estimated_storage_mb = (
+                storage_mb * (target_docs / corpus_count)
+                if storage_mb is not None and corpus_count
+                else None
+            )
+
+            estimated_queries_per_sec = target_queries / estimated_query_time if estimated_query_time else None
+
+            rows.append(
+                {
+                    "name": self._name(retriever),
+                    "target_docs": target_docs,
+                    "target_queries": target_queries,
+                    "estimated_index_time": estimated_index_time,
+                    "estimated_query_time": estimated_query_time,
+                    "estimated_storage_mb": estimated_storage_mb,
+                    "queries_per_sec": estimated_queries_per_sec,
+                }
+            )
+
+        return rows
+
+    def _scalability_estimates_table(
+        self,
+        rows: list[dict[str, Any]],
+        styles: dict[str, Any],
+    ) -> Table:
+        headers = [
+            "Retriever",
+            "Target Docs",
+            "Est. Index Time",
+            "Target Queries",
+            "Est. Query Time",
+            "Est. Queries/Sec",
+            "Est. Storage",
+        ]
+
+        data = [[Paragraph(header, styles["HeaderCell"]) for header in headers]]
+
+        for row in rows:
+            data.append(
+                [
+                    Paragraph(self._esc(row["name"]), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["target_docs"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format_time(row["estimated_index_time"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["target_queries"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format_time(row["estimated_query_time"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format(row["queries_per_sec"])), styles["Cell"]),
+                    Paragraph(self._esc(self._format_storage(row["estimated_storage_mb"])), styles["Cell"]),
+                ]
+            )
+
+        table = Table(
+            data,
+            colWidths=[42 * mm, 24 * mm, 24 * mm, 28 * mm, 28 * mm, 24 * mm],
+            hAlign="LEFT",
+        )
+
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F9FAFB")),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+
+        return table
+
+    def _scalability_chart(self, rows: list[dict[str, Any]]) -> Drawing:
+        values = [
+            (row["name"], self._number(row.get("estimated_query_time")))
+            for row in rows
+            if self._number(row.get("estimated_query_time")) is not None
+        ]
+
+        if not values:
+            return Drawing(1, 1)
+
+        width = 170 * mm
+        row_height = 15
+        label_width = 52 * mm
+        bar_width = 90 * mm
+        height = max(24, 10 + row_height * len(values))
+
+        drawing = Drawing(width, height)
+        max_value = max([value for _name, value in values if value is not None] + [1.0])
+
+        y = height - 14
+
+        for name, value in values:
+            value = value or 0.0
+
+            drawing.add(
+                String(
+                    0,
+                    y,
+                    self._truncate(name, 32),
+                    fontSize=7,
+                    fillColor=colors.HexColor("#111827"),
+                )
+            )
+
+            drawing.add(
+                Rect(
+                    label_width,
+                    y - 3,
+                    bar_width,
+                    6,
+                    fillColor=colors.HexColor("#E5E7EB"),
+                    strokeColor=None,
+                )
+            )
+
+            drawing.add(
+                Rect(
+                    label_width,
+                    y - 3,
+                    bar_width * max(0.0, value / max_value),
+                    6,
+                    fillColor=colors.HexColor("#2563EB"),
+                    strokeColor=None,
+                )
+            )
+
+            drawing.add(
+                String(
+                    label_width + bar_width + 5,
+                    y,
+                    self._format_time(value),
+                    fontSize=7,
+                    fillColor=colors.HexColor("#111827"),
+                )
+            )
+
+            y -= row_height
+
+        return drawing
+
+
+
 
     def _comparison_metric_maps_with_rerank(
         self,
@@ -937,6 +1462,8 @@ class StaticRetrieverReport:
         flat = dict(self._flatten(metrics))
 
         for key in (
+            "index_time.indexing.storage_size_mb",
+            "index_time.encoding.storage_size_mb",
             "index_time.indexing.size_in_mb",
             "index_time.encoding.size_in_mb",
             "index_time.indexing.size_mb",
@@ -947,6 +1474,8 @@ class StaticRetrieverReport:
                 return value
 
         for key in (
+            "index_time.indexing.storage_size_bytes",
+            "index_time.encoding.storage_size_bytes",
             "index_time.indexing.size_in_bytes",
             "index_time.encoding.size_in_bytes",
         ):
@@ -956,11 +1485,28 @@ class StaticRetrieverReport:
 
         return None
 
-    def _format_seconds(self, value: Any) -> str:
+    def _format_time(self, value: Any) -> str:
         number = self._number(value)
         if number is None:
             return "-"
-        return f"{number:.4f}s".rstrip("0").rstrip(".")
+        if number <= 120.0:
+            return f"{number:.4f}s".rstrip("0").rstrip(".")
+        elif number <= 3600.0:
+            number_min = number / 60
+            return f"{number_min:.2f}min".rstrip("0").rstrip(".")
+        else:
+            number_hour = number / 3600
+            return f"{number_hour:.2f}h".rstrip("0").rstrip(".")
+
+    def _format_storage(self, value: Any) -> str:
+        number = self._number(value)
+        if number is None:
+            return "-"
+        if number < 1024.0:
+            return f"{number:.2f}MB".rstrip("0").rstrip(".")
+        else:
+            number_gb = number / 1024
+            return f"{number_gb:.2f}GB".rstrip("0").rstrip(".")
 
 
     def _rerank_values(self, retrievers: list[Any], metric_key: str) -> list[tuple[str, float]]:
