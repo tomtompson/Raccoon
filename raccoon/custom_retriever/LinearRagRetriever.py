@@ -6,6 +6,7 @@ from raccoon.custom_retriever.util.InMemoryEmbeddingStore import EmbeddingStore
 from raccoon.custom_retriever.util.ConceptExtractor import ConceptExtractor
 from collections import defaultdict, Counter
 from sentence_transformers import SentenceTransformer
+from pathlib import Path
 
 import os
 import faiss
@@ -16,6 +17,7 @@ import json
 import hashlib
 import numpy as np
 import igraph as ig
+import re
 from .util.utils import (join_title_text, min_max_normalize, rrf_fuse)
 
 
@@ -42,6 +44,9 @@ class LinearRagRetriever(BaseRetriever):
         self.sentence_store = None
         self.bm25 = None
         self.use_gpu_for_spacy = True
+        self.query_graph_path = None
+        self.query_graph_query_id = None
+        self.query_graph_query = None
         super().__init__(config, corpus, queries, reranker)
     def create_index(self, *args, **kwargs) -> None:
         raise NotImplementedError("Linear retriever does not support create_index().")
@@ -293,7 +298,7 @@ class LinearRagRetriever(BaseRetriever):
         resolved_top_k = top_k or self.config.get("retrieval_top_k", 100)
 
         for i, (qid, query) in enumerate(items, start=1):
-            ranked_doc_ids, ranked_scores, _, _ = self._search_once(
+            ranked_doc_ids, ranked_scores, g, graph_scores = self._search_once(
                 query,
                 top_k=resolved_top_k
             )
@@ -301,6 +306,20 @@ class LinearRagRetriever(BaseRetriever):
                 doc_id: float(score)
                 for doc_id, score in zip(ranked_doc_ids, ranked_scores)
             }
+
+            if (
+                self.config.get("export_query_graph", False)
+                and self.query_graph_path is None
+            ):
+                self.query_graph_path = self.export_query_graph_png(
+                    query=query,
+                    g=g,
+                    graph_scores=graph_scores,
+                    max_nodes=self.config.get("query_graph_max_nodes", 35),
+                    output_dir=self.config.get("query_graph_output_dir", "report_graphs"),
+                )
+                self.query_graph_query_id = qid
+                self.query_graph_query = query
 
             if i == 1 or i % 10 == 0 or i == total_queries:
                 print(f"Retrieving queries: {i}/{total_queries}")
@@ -911,3 +930,94 @@ class LinearRagRetriever(BaseRetriever):
         except Exception as e:
             print(f"[CACHE] Failed loading cache: {e}")
             return False
+    
+    def export_query_graph_png(
+    self,
+    query: str,
+    g,
+    graph_scores,
+    max_nodes: int = 35,
+    output_dir: str = "report_graphs",
+    ) -> str | None:
+        if g is None or g.vcount() == 0:
+            return None
+
+        safe_query = re.sub(r"[^a-zA-Z0-9_-]+", "_", query.lower()).strip("_")[:80]
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        score_map = {doc_id: float(score) for doc_id, score in graph_scores}
+
+        scores = []
+        for v in g.vs:
+            name = v["name"]
+            scores.append(score_map.get(name, 0.0))
+
+        g.vs["pagerank_score"] = scores
+
+        top_indices = sorted(
+            range(g.vcount()),
+            key=lambda i: g.vs[i]["pagerank_score"],
+            reverse=True,
+        )[:max_nodes]
+
+        subg = g.subgraph(top_indices)
+
+        labels = []
+        colors = []
+        sizes = []
+
+        max_score = max(subg.vs["pagerank_score"]) if subg.vcount() else 1.0
+
+        for v in subg.vs:
+            node_type = v["node_type"]
+            name = v["name"]
+            score = float(v["pagerank_score"])
+
+            sizes.append(18 + 45 * (score / max_score if max_score > 0 else 0))
+
+            if node_type == "passage":
+                labels.append(self.corpus[name]["text"][:45])
+                colors.append("lightblue")
+            elif node_type == "concept":
+                labels.append(self.concept_store.id_to_text.get(name, name)[:35])
+                colors.append("orange")
+            elif node_type == "sentence":
+                labels.append(self.sentence_store.id_to_text.get(name, name)[:45])
+                colors.append("lightgreen")
+            else:
+                labels.append(str(name)[:35])
+                colors.append("gray")
+
+        subg.vs["label"] = labels
+
+        if "weight" in subg.es.attributes():
+            weights = [float(w) for w in subg.es["weight"]]
+        else:
+            weights = [1.0 for _ in subg.es]
+
+        max_weight = max(weights) if weights else 1.0
+        edge_widths = [
+            0.5 + 2.0 * (w / max_weight if max_weight > 0 else 0)
+            for w in weights
+        ]
+
+        png_path = output_path / f"{safe_query}_query_graph.png"
+
+        layout = subg.layout("fr")
+
+        ig.plot(
+            subg,
+            target=str(png_path),
+            layout=layout,
+            bbox=(1600, 950),
+            margin=90,
+            vertex_label=subg.vs["label"],
+            vertex_label_size=16,
+            vertex_color=colors,
+            vertex_size=sizes,
+            edge_width=edge_widths,
+            edge_color="gray",
+        )
+
+        return str(png_path)

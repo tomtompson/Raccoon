@@ -4,7 +4,7 @@ import numpy as np
 import os
 import torch
 import pickle
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Any
 from collections import defaultdict
 import re
 
@@ -80,8 +80,21 @@ def deep_merge_dict(base: dict, new: dict) -> dict:
             base[key] = value
     return base
 
+def normalize_result(raw: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "metrics": {
+            "retrieval": raw.get("dense", raw.get("bm25", raw.get("hybrid", raw.get("linear_rag", {})))),
+            "rerank": raw.get("rerank", {}),
+        },
+        "timing": {
+            "index": raw.get("index_time", {}),
+            "query": raw.get("query_time", {}),
+            "rerank": raw.get("rerank_time", {}),
+        },
+    }
 
-def append_results(file_path: str | Path, name: str, *args) -> None:
+
+def append_results(file_path: str | Path, name: str, *args, normalize: bool = True) -> None:
     file_path = Path(file_path)
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -95,14 +108,15 @@ def append_results(file_path: str | Path, name: str, *args) -> None:
     else:
         data = {}
 
-    if name not in data:
-        data[name] = {}
+    merged = {}
 
     for arg in args:
         if isinstance(arg, dict):
-            deep_merge_dict(data[name], arg)
+            deep_merge_dict(merged, arg)
         else:
             print(f"Warning: Argument {arg} is not a dictionary and will be skipped.")
+
+    data[name] = normalize_result(merged) if normalize else merged
 
     tmp_file = file_path.with_suffix(file_path.suffix + ".tmp")
 
@@ -111,4 +125,4 @@ def append_results(file_path: str | Path, name: str, *args) -> None:
 
     os.replace(tmp_file, file_path)
 
-    print(f"Results appended to {file_path}")
+    print(f"Results written to {file_path}")
