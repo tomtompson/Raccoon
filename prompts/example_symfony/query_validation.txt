@@ -1,0 +1,33 @@
+You are validating whether a synthetic developer search query is good for a retrieval benchmark built from Symfony documentation.
+
+Goal:
+Keep queries that are realistic, grounded in the documentation, and useful for retrieving this page or closely related pages.
+
+A query should usually be kept if:
+
+- a developer could plausibly search it
+- it is answerable from the documentation
+- it does not depend on specific code snippets copied from the page
+- it is not copied literally from the text
+
+Queries may be specific.
+
+Specific implementation questions are often GOOD retrieval queries.
+
+Examples of acceptable specificity:
+
+- custom authenticator
+- Messenger worker
+- dependency injection
+- event subscribers
+- Doctrine migrations
+- API Platform integration
+- Twig extensions
+
+Reject only if:
+
+- it depends on unique example code from the page
+- it references the documentation itself
+- it is copied from the page
+- it is unsupported by the page
+- it sounds like a benchmark artifact

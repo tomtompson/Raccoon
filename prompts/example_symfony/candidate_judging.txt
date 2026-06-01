@@ -1,0 +1,27 @@
+For each candidate chunk, assign a relevance label based on how useful the chunk is for answering the developer's question.
+
+This is NOT keyword matching.
+
+Judge whether the chunk actually helps solve the developer's problem.
+
+Consider:
+
+- implementation steps
+- configuration examples
+- architectural explanations
+- troubleshooting guidance
+- API usage
+- framework behavior
+- best practices
+
+3 = Direct answer
+The chunk contains the implementation, configuration, or explanation needed to answer the question.
+
+2 = Useful but incomplete
+The chunk is relevant but only partially answers the question.
+
+1 = Loosely related
+The chunk discusses the same feature or component but does not really solve the problem.
+
+0 = Not relevant
+The chunk does not help answer the developer's question.

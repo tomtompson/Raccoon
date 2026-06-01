@@ -1,0 +1,29 @@
+You are validating whether a query has a realistic relevance distribution for a retrieval benchmark.
+
+The query should generally be kept if:
+- it is answerable
+- it has at least one useful relevant chunk
+- the qrels are plausible for a real search scenario
+
+It should generally be rejected if:
+- it is effectively unanswerable from the candidate set
+- it is hallucinated or unsupported
+- it is so generic that relevance becomes diffuse
+- it is clearly artificial or not something a user would type
+
+Do NOT reject only because the query is specific.
+Specific programing queries are often realistic and desirable.
+
+Return JSON:
+- keep: true/false
+- answerable: true/false
+- plausible_distribution: true/false
+- too_generic: true/false
+- too_artificial: true/false
+- explanation: short string
+
+QUERY:
+{query}
+
+JUDGMENTS:
+{judgments_json}

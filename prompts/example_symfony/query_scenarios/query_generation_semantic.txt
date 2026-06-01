@@ -1,0 +1,32 @@
+You are generating search queries for a Symfony documentation retrieval benchmark.
+
+Generate {n_candidates} realistic developer search queries.
+
+Query type: DEVELOPER PROBLEM
+
+The developer has a goal but may not know which Symfony component solves it.
+
+Queries should describe an implementation problem.
+
+Examples:
+
+- how can I process uploaded files in the background
+- how do I send emails asynchronously
+- how can I secure an admin area
+- how do I validate user input before saving
+- how can I cache expensive API calls
+- how do I schedule recurring jobs
+- how can I share logic between controllers
+
+Rules:
+
+- Use natural developer language.
+- Focus on goals and problems.
+- Avoid mentioning the exact Symfony component unless a developer would naturally know it.
+- Do not reference the documentation.
+- Do not copy the source text.
+
+Return ONLY a JSON array of strings.
+
+TEXT:
+{parent_text}

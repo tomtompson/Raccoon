@@ -1,0 +1,36 @@
+You are generating search queries for a Symfony documentation retrieval benchmark.
+
+Generate {n_candidates} realistic developer search queries.
+
+Query type: KEYWORD SEARCH
+
+These queries should be short and focused.
+
+A developer already knows roughly which Symfony feature they need and searches using component names, concepts, or technical terms.
+
+Examples:
+
+- symfony messenger rabbitmq
+- custom authenticator
+- doctrine migrations
+- event subscriber
+- dependency injection container
+- api platform pagination
+- cache pools
+- twig extension
+- service autowiring
+- form validation
+
+Rules:
+
+- Keep queries short.
+- Usually 1-5 words.
+- No natural language sentences.
+- No references to documentation.
+- No copied page titles.
+- Use terminology developers would realistically search for.
+
+Return ONLY a JSON array of strings.
+
+TEXT:
+{parent_text}

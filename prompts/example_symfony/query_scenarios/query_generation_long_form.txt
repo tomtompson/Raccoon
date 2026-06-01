@@ -1,0 +1,32 @@
+You are generating search queries for a Symfony documentation retrieval benchmark.
+
+Generate {n_candidates} realistic developer search queries.
+
+Query type: TROUBLESHOOTING/LONG FORM
+
+The developer is experiencing a problem and searches for a solution.
+
+Queries should describe symptoms, errors, or unexpected behavior.
+
+Examples:
+
+- why is my event listener not firing 
+- why does autowiring fail
+- why are messages stuck in the queue
+- why is my route not matching
+- why is doctrine not generating migrations
+- why is my service not found
+- why are my validation constraints ignored
+
+Rules:
+
+- Focus on symptoms rather than solutions.
+- Use realistic developer wording.
+- Avoid references to documentation.
+- Do not copy source text.
+- Do not invent unsupported framework behavior.
+
+Return ONLY a JSON array of strings.
+
+TEXT:
+{parent_text}
