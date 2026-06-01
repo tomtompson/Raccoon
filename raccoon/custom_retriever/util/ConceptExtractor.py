@@ -12,7 +12,7 @@ class ConceptExtractor:
         min_concept_len: int = 6,
         max_concept_words: int = 4,
         stop_concept: Optional[List[str]] = None,
-        use_gpu: bool = False,
+        use_gpu: bool = True,
     ):
 
         if use_gpu:

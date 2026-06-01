@@ -43,7 +43,7 @@ class LinearRagRetriever(BaseRetriever):
         self.concept_store = None
         self.sentence_store = None
         self.bm25 = None
-        self.use_gpu_for_spacy = True
+        self.use_gpu_for_spacy = torch.cuda.is_available() and self.config.get("use_gpu_for_spacy", True)
         self.query_graph_path = None
         self.query_graph_query_id = None
         self.query_graph_query = None
@@ -224,7 +224,7 @@ class LinearRagRetriever(BaseRetriever):
         embedding_latency = time.perf_counter() - embedding_start
 
         print("Reloading spaCy on CPU for query concept extraction...")
-        self.extractor = ConceptExtractor(self.config.get("spacy_model_name", "nl_core_news_sm"), use_gpu=False,
+        self.extractor = ConceptExtractor(self.config.get("spacy_model_name", "nl_core_news_sm"), use_gpu=self.use_gpu_for_spacy and torch.cuda.is_available(),
                                             min_concept_len=self.config.get("min_concept_len", 6),
                                             max_concept_words=self.config.get("max_concept_words", 4),
                                             stop_concept=self.config.get("stop_concept",[]))
@@ -653,7 +653,9 @@ class LinearRagRetriever(BaseRetriever):
                 weights="weight" if g.ecount() > 0 else None,
                 reset=reset,
             )
-
+        
+        g.vs["pagerank_score"] = [float(score) for score in scores]
+        
         doc_scores = []
         for doc_id in candidate_passages:
             idx = name_to_idx.get(doc_id)
@@ -918,7 +920,7 @@ class LinearRagRetriever(BaseRetriever):
             # Needed for query concept extraction
             self.extractor = ConceptExtractor(
                 self.config.get("spacy_model_name","nl_core_news_sm"),
-                use_gpu=False,
+                use_gpu=self.use_gpu_for_spacy and torch.cuda.is_available(),
                 min_concept_len=self.config.get("min_concept_len", 6),
                 max_concept_words=self.config.get("max_concept_words", 4),
                 stop_concept=self.config.get("stop_concept",[])
@@ -935,7 +937,7 @@ class LinearRagRetriever(BaseRetriever):
     self,
     query: str,
     g,
-    graph_scores,
+    graph_scores=None,
     max_nodes: int = 35,
     output_dir: str = "report_graphs",
     ) -> str | None:
@@ -946,22 +948,37 @@ class LinearRagRetriever(BaseRetriever):
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
-        score_map = {doc_id: float(score) for doc_id, score in graph_scores}
+        if "pagerank_score" not in g.vs.attributes():
+            return None
 
-        scores = []
-        for v in g.vs:
-            name = v["name"]
-            scores.append(score_map.get(name, 0.0))
+        max_passages = self.config.get("query_graph_max_passages", 8)
+        max_concepts = self.config.get("query_graph_max_concepts", 14)
 
-        g.vs["pagerank_score"] = scores
+        selected_indices = []
 
-        top_indices = sorted(
-            range(g.vcount()),
-            key=lambda i: g.vs[i]["pagerank_score"],
-            reverse=True,
-        )[:max_nodes]
+        for node_type, limit in [
+            ("passage", max_passages),
+            ("concept", max_concepts),
+        ]:
+            type_indices = [
+                v.index for v in g.vs
+                if v["node_type"] == node_type
+            ]
 
-        subg = g.subgraph(top_indices)
+            top_type_indices = sorted(
+                type_indices,
+                key=lambda i: float(g.vs[i]["pagerank_score"]),
+                reverse=True,
+            )[:limit]
+
+            selected_indices.extend(top_type_indices)
+
+        selected_indices = list(dict.fromkeys(selected_indices))[:max_nodes]
+
+        if not selected_indices:
+            return None
+
+        subg = g.subgraph(selected_indices)
 
         labels = []
         colors = []
@@ -977,14 +994,16 @@ class LinearRagRetriever(BaseRetriever):
             sizes.append(18 + 45 * (score / max_score if max_score > 0 else 0))
 
             if node_type == "passage":
-                labels.append(self.corpus[name]["text"][:45])
+                doc = self.corpus.get(name, {})
+                text = doc.get("text", str(name)) if isinstance(doc, dict) else str(doc)
+                labels.append("DOC: " + text[:45])
                 colors.append("lightblue")
+
             elif node_type == "concept":
-                labels.append(self.concept_store.id_to_text.get(name, name)[:35])
+                concept = self.concept_store.id_to_text.get(name, name)
+                labels.append("ENT: " + concept[:35])
                 colors.append("orange")
-            elif node_type == "sentence":
-                labels.append(self.sentence_store.id_to_text.get(name, name)[:45])
-                colors.append("lightgreen")
+
             else:
                 labels.append(str(name)[:35])
                 colors.append("gray")
@@ -1013,7 +1032,7 @@ class LinearRagRetriever(BaseRetriever):
             bbox=(1600, 950),
             margin=90,
             vertex_label=subg.vs["label"],
-            vertex_label_size=16,
+            vertex_label_size=15,
             vertex_color=colors,
             vertex_size=sizes,
             edge_width=edge_widths,

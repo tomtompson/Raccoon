@@ -45,85 +45,85 @@ ENCODE_PATH = "data/processed/rechtspraken/beir_600_semantic/encode/"
 RETRIEVERS = []
 
 
-PDF_PATH = Path("data/processed/rechtspraken/report_semantic.pdf")
+PDF_PATH = Path("data/processed/report_graph.pdf")
 
 
 def main() -> None:
     #======================================================
     # Document loading and chunking
     #======================================================
-    # loader = FixedDocumentLoader(
-    #     path=SOURCE_PATH_RAW,
-    #     chunk_size=4000, # Document will be split into chunks of 4000 characters then futher split into child chunks // 4
-    #     chunk_overlap=200,
-    # )
-    # documents_parents , documents_child = loader.get_data()
-    # loader.save_chunked_documents(OUTPUT_PATH_CHUNKS / "parent_chunks.json", OUTPUT_PATH_CHUNKS / "child_chunks.json")
+    if not OUTPUT_PATH_CHUNKS.exists():
+        loader = FixedDocumentLoader(
+            path=SOURCE_PATH_RAW,
+            chunk_size=4000, # Document will be split into chunks of 4000 characters then futher split into child chunks // 4
+            chunk_overlap=200,
+        )
+        documents_parents , documents_child = loader.get_data()
+        loader.save_chunked_documents(OUTPUT_PATH_CHUNKS / "parent_chunks.json", OUTPUT_PATH_CHUNKS / "child_chunks.json")
 
-    # print(f"Saved {len(documents_parents)} parent and {len(documents_child)} child documents to {OUTPUT_PATH_CHUNKS}")
+        print(f"Saved {len(documents_parents)} parent and {len(documents_child)} child documents to {OUTPUT_PATH_CHUNKS}")
 
 
     # #======================================================
     # # Synthesize dataset
     # #======================================================
-    # synth = OllamaSynthesizer(
-    # host="http://localhost:11434",
-    # prompt_paths={
-    #     "query_generation": QUERY_PROMPT_PATH,
-    #     "query_validation": "prompts/example_rechtspraak/query_validation.txt",
-    #     "candidate_judging": "prompts/example_rechtspraak/candidate_judging.txt",
-    #     "distribution_validation": "prompts/example_rechtspraak/distribution_validation.txt",
-    # },)
-    # parent = synth.load_chunks(OUTPUT_PATH_CHUNKS / "parent_chunks.json")
-    # child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "chunks.json")
+    synth = OllamaSynthesizer(
+    host="http://localhost:11434",
+    prompt_paths={
+        "query_generation": QUERY_PROMPT_PATH,
+        "query_validation": "prompts/example_rechtspraak/query_validation.txt",
+        "candidate_judging": "prompts/example_rechtspraak/candidate_judging.txt",
+        "distribution_validation": "prompts/example_rechtspraak/distribution_validation.txt",
+    },)
+    parent = synth.load_chunks(OUTPUT_PATH_CHUNKS / "parent_chunks.json")
+    child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "chunks.json")
 
-    # synth.synthesize_beir(
-    #     parent_chunks=parent,
-    #     child_chunks=child,
-    #     output_dir=OUTPUT_PATH_SYNTH,
-    #     embedding_id="Snowflake/snowflake-arctic-embed-l-v2.0",
-    #     embedding_kwargs= {},
-    #     query_model="qwen3:8b",
-    #     query_validation_model="qwen3:8b",
-    #     judge_model="qwen3:8b",
-    #     qrel_validation_model="qwen3:8b",
-    #     queries_per_parent_to_generate=2,
-    #     max_queries_to_keep_per_parent=1,
-    #     max_query_tokens = 50,
-    #     dense_k=25,
-    #     bm25_k=15,
-    #     rrf_top_k=15,
-    #     same_topic_negative_k=3,
-    #     random_negative_k=3,
-    #     min_score_to_keep_in_qrels=2,
-    #     max_qrels_per_query=3,
-    #     include_source_parent_children=True,
-    #     parent_text_limit_prompt=3000,
-    #     candidate_text_limit_prompt=800,
-    #     max_estimated_tokens= 5000,
-    #     overwrite_corpus=False,
-    #     max_parents=None,
-    #     random_seed=42,
-    #     target_queries_per_source=1,
-    #     shuffle_parents=True,
-    #     reranker_id= RERANKER_ID,
-    #     #None,
-    #     rerank_pool_size= 70,
-    #     rerank_keep_top_k=50,
-    # )
+    synth.synthesize_beir(
+        parent_chunks=parent,
+        child_chunks=child,
+        output_dir=OUTPUT_PATH_SYNTH,
+        embedding_id="Snowflake/snowflake-arctic-embed-l-v2.0",
+        embedding_kwargs= {},
+        query_model="qwen3:8b",
+        query_validation_model="qwen3:8b",
+        judge_model="qwen3:8b",
+        qrel_validation_model="qwen3:8b",
+        queries_per_parent_to_generate=2,
+        max_queries_to_keep_per_parent=1,
+        max_query_tokens = 50,
+        dense_k=25,
+        bm25_k=15,
+        rrf_top_k=15,
+        same_topic_negative_k=3,
+        random_negative_k=3,
+        min_score_to_keep_in_qrels=2,
+        max_qrels_per_query=3,
+        include_source_parent_children=True,
+        parent_text_limit_prompt=3000,
+        candidate_text_limit_prompt=800,
+        max_estimated_tokens= 5000,
+        overwrite_corpus=False,
+        max_parents=None,
+        random_seed=42,
+        target_queries_per_source=1,
+        shuffle_parents=True,
+        reranker_id= RERANKER_ID,
+        rerank_pool_size= 70,
+        rerank_keep_top_k=50,
+    )
 
 
 
     #======================================================
     # Initialize Reranker
     #======================================================
-    # reranker = Reranker(
-    #     model_id=RERANKER_ID,
-    #     top_k=TOP_K,
-    #     batch_size=16,
-    #     max_length=MAX_LENGHT,
-    #     device=DEVICE,
-    # )
+    reranker = Reranker(
+        model_id=RERANKER_ID,
+        top_k=TOP_K,
+        batch_size=16,
+        max_length=MAX_LENGHT,
+        device=DEVICE,
+    )
 
     #======================================================
     # BM25 Retrieval and evaluation
@@ -131,13 +131,13 @@ def main() -> None:
     
     corpus, queries, qrels, name = load_local_beir_dataset(INPUT_PATH, "test")
 
-    # description = synth.generate_description_of_ds(
-    #     model="qwen3:8b",
-    #     language="dutch",
-    #     corpus=corpus,
-    #     queries=queries,
-    #     description_length=250,
-    # )
+    description = synth.generate_description_of_ds(
+        model="qwen3:8b",
+        language="dutch",
+        corpus=corpus,
+        queries=queries,
+        description_length=250,
+    )
 
 
     with ElasticSearchContainer(ELASTIC_IMAGE) as container:
@@ -150,7 +150,7 @@ def main() -> None:
             corpus = corpus,
             queries = queries,
             topk=TOP_K,
-            # reranker=reranker,
+            reranker=reranker,
         )
         retriever_bm25.index_corpus()
         retriever_bm25.search()
@@ -159,16 +159,16 @@ def main() -> None:
         retriever_bm25.add_retrieval_result(eval_results)
         
 
-        # eval_results = eval.evaluate(qrels=qrels, results=retriever_bm25.rerank_results, k_values=[1, 3, 5, 10, 20],)
-        # retriever_bm25.add_rerank_retrieval_result(eval_results)
+        eval_results = eval.evaluate(qrels=qrels, results=retriever_bm25.rerank_results, k_values=[1, 3, 5, 10, 20],)
+        retriever_bm25.add_rerank_retrieval_result(eval_results)
         append_results(
         RESULT_FILE_PATH,
         retriever_bm25.retriever_type,
         retriever_bm25.retrieval_metrics,
-        # retriever_bm25.metrics,
-        # {
-        #     "rerank_time": retriever_bm25.rerank_metrics,
-        # },
+        retriever_bm25.metrics,
+        {
+            "rerank_time": retriever_bm25.rerank_metrics,
+        },
         )
 
         RETRIEVERS.append(retriever_bm25)
@@ -176,67 +176,67 @@ def main() -> None:
     # Dense Retrieval and evaluation
     #======================================================
 
-    # retriever_dense = DenseRetrieverSentenceBert(corpus=corpus, 
-    #                                        queries=queries,
-    #                                        model_id=MODEL_ID,
-    #                                        max_length=MAX_LENGHT,
-    #                                        device=DEVICE,
-    #                                        query_prompt_name=QUERY_PROMPT_NAME,
-    #                                        passage_prompt_name=PASSAGE_PROMPT_NAME,
-    #                                        reranker=reranker,)
-    # retriever_dense.search(top_k=TOP_K, 
-    #                  encode_output_path= ENCODE_PATH,
-    #                  )
-    # eval = EvaluateRetrieval()
-    # eval_results = eval.evaluate(qrels=qrels, results=retriever_dense.results, k_values=[1, 3, 5, 10, 20],)
-    # retriever_dense.add_retrieval_result(eval_results)
+    retriever_dense = DenseRetrieverSentenceBert(corpus=corpus, 
+                                           queries=queries,
+                                           model_id=MODEL_ID,
+                                           max_length=MAX_LENGHT,
+                                           device=DEVICE,
+                                           query_prompt_name=QUERY_PROMPT_NAME,
+                                           passage_prompt_name=PASSAGE_PROMPT_NAME,
+                                           reranker=reranker,)
+    retriever_dense.search(top_k=TOP_K, 
+                     encode_output_path= ENCODE_PATH,
+                     )
+    eval = EvaluateRetrieval()
+    eval_results = eval.evaluate(qrels=qrels, results=retriever_dense.results, k_values=[1, 3, 5, 10, 20],)
+    retriever_dense.add_retrieval_result(eval_results)
     
-    # eval_results = eval.evaluate(qrels=qrels, results=retriever_dense.rerank_results, k_values=[1, 3, 5, 10, 20],)
-    # retriever_dense.add_rerank_retrieval_result(eval_results)
-    # append_results(
-    # RESULT_FILE_PATH,
-    # retriever_dense.retriever_type,
-    # retriever_dense.retrieval_metrics,
-    # retriever_dense.metrics,
-    # {
-    #     "rerank_time": retriever_dense.rerank_metrics,
-    # },
-    # )
+    eval_results = eval.evaluate(qrels=qrels, results=retriever_dense.rerank_results, k_values=[1, 3, 5, 10, 20],)
+    retriever_dense.add_rerank_retrieval_result(eval_results)
+    append_results(
+    RESULT_FILE_PATH,
+    retriever_dense.retriever_type,
+    retriever_dense.retrieval_metrics,
+    retriever_dense.metrics,
+    {
+        "rerank_time": retriever_dense.rerank_metrics,
+    },
+    )
     
-    # RETRIEVERS.append(retriever_dense)
+    RETRIEVERS.append(retriever_dense)
 
     #======================================================
     # Hybrid Retrieval and evaluation
     #======================================================
     
-    # retriever_hybrid = HybridRetriever(
-    #     corpus = corpus,
-    #     queries = queries,
-    #     retrievers=[
-    #         (retriever_bm25, 0.3),
-    #         (retriever_dense, 0.7),
-    #     ],
-    #     k=60,
-    #     reranker=reranker,
-    # )
-    # retriever_hybrid.search(top_k=TOP_K)
-    # eval = EvaluateRetrieval()
-    # eval_results = eval.evaluate(qrels=qrels, results=retriever_hybrid.results, k_values=[1, 3, 5, 10, 20],)
-    # retriever_hybrid.add_retrieval_result(eval_results)
+    retriever_hybrid = HybridRetriever(
+        corpus = corpus,
+        queries = queries,
+        retrievers=[
+            (retriever_bm25, 0.3),
+            (retriever_dense, 0.7),
+        ],
+        k=60,
+        reranker=reranker,
+    )
+    retriever_hybrid.search(top_k=TOP_K)
+    eval = EvaluateRetrieval()
+    eval_results = eval.evaluate(qrels=qrels, results=retriever_hybrid.results, k_values=[1, 3, 5, 10, 20],)
+    retriever_hybrid.add_retrieval_result(eval_results)
 
-    # eval_results = eval.evaluate(qrels=qrels, results=retriever_hybrid.rerank_results, k_values=[1, 3, 5, 10, 20],)
-    # retriever_hybrid.add_rerank_retrieval_result(eval_results)
-    # append_results(
-    # RESULT_FILE_PATH,
-    # retriever_hybrid.retriever_type,
-    # retriever_hybrid.retrieval_metrics,
-    # retriever_hybrid.metrics,
-    # {
-    #     "rerank_time": retriever_hybrid.rerank_metrics,
-    # },
-    # )
+    eval_results = eval.evaluate(qrels=qrels, results=retriever_hybrid.rerank_results, k_values=[1, 3, 5, 10, 20],)
+    retriever_hybrid.add_rerank_retrieval_result(eval_results)
+    append_results(
+    RESULT_FILE_PATH,
+    retriever_hybrid.retriever_type,
+    retriever_hybrid.retrieval_metrics,
+    retriever_hybrid.metrics,
+    {
+        "rerank_time": retriever_hybrid.rerank_metrics,
+    },
+    )
 
-    # RETRIEVERS.append(retriever_hybrid)  
+    RETRIEVERS.append(retriever_hybrid)  
  
     #======================================================
     # LinearRAG Retrieval and evaluation
@@ -301,7 +301,7 @@ def main() -> None:
         config=config,
         corpus=corpus,
         queries=queries,
-        # reranker=reranker,
+        reranker=reranker,
     )
 
     retriever_linear.index_corpus()
@@ -318,16 +318,16 @@ def main() -> None:
     retriever_linear.add_retrieval_result(eval_results)
 
 
-    # eval_results = evaluator.evaluate(qrels=qrels, results=retriever_linear.rerank_results, k_values=[1, 3, 5, 10, 20],)
-    # retriever_linear.add_rerank_retrieval_result(eval_results)
+    eval_results = evaluator.evaluate(qrels=qrels, results=retriever_linear.rerank_results, k_values=[1, 3, 5, 10, 20],)
+    retriever_linear.add_rerank_retrieval_result(eval_results)
     append_results(
     RESULT_FILE_PATH,
     retriever_linear.retriever_type,
     retriever_linear.retrieval_metrics,
     retriever_linear.metrics,
-    # {
-    #     "rerank_time": retriever_linear.rerank_metrics,
-    # },
+    {
+        "rerank_time": retriever_linear.rerank_metrics,
+    },
     )
 
     RETRIEVERS.append(retriever_linear)
@@ -363,7 +363,9 @@ def main() -> None:
     },
     }
     report = StaticRetrieverReport()
-    report.generate_report(title = "Retriever Performance Report", ds_description = description, retrievers=RETRIEVERS, qrels=qrels, output_path=PDF_PATH, language="dutch", config=report_config)
+    report.generate_report(title = "Retriever Performance Report", 
+    ds_description = description, 
+    retrievers=RETRIEVERS, qrels=qrels, output_path=PDF_PATH, language="dutch", config=report_config)
 
 
 

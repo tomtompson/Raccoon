@@ -117,7 +117,6 @@ class StaticRetrieverReport:
 
         story += self._query_graph_pages(retrievers, styles, config)
 
-        story += [PageBreak(), Paragraph("Raw Results", styles["Heading2"]), Spacer(1, 12)]
         for retriever in retrievers:
             story += self._retriever_section(
                 retriever=retriever,
@@ -173,7 +172,7 @@ class StaticRetrieverReport:
         doc_rows = self._query_graph_document_rows(
             hits=hits,
             corpus=corpus,
-            limit=self._int(config.get("query_graph_doc_rows", 5), 5),
+            limit=self._int(config.get("query_graph_doc_rows", 8), 5),
             chars=self._int(config.get("query_graph_doc_chars", 130), 130),
         )
 
@@ -224,50 +223,50 @@ class StaticRetrieverReport:
         return rows
 
 
-        def _query_graph_document_table(
-            self,
-            rows: list[list[Any]],
-            styles: dict[str, Any],
-        ) -> Table:
-            if not rows:
-                rows = [["-", "-", "-", "No retrieved documents available."]]
+    def _query_graph_document_table(
+        self,
+        rows: list[list[Any]],
+        styles: dict[str, Any],
+    ) -> Table:
+        if not rows:
+            rows = [["-", "-", "-", "No retrieved documents available."]]
 
-            data = [
-                [
-                    Paragraph("Rank", styles["HeaderCell"]),
-                    Paragraph("Document", styles["HeaderCell"]),
-                    Paragraph("Score", styles["HeaderCell"]),
-                    Paragraph("Text", styles["HeaderCell"]),
-                ]
+        data = [
+            [
+                Paragraph("Rank", styles["HeaderCell"]),
+                Paragraph("Document", styles["HeaderCell"]),
+                Paragraph("Score", styles["HeaderCell"]),
+                Paragraph("Text", styles["HeaderCell"]),
             ]
+        ]
 
-            for rank, doc_id, score, text in rows:
-                data.append([
-                    Paragraph(self._esc(str(rank)), styles["Cell"]),
-                    Paragraph(self._esc(str(doc_id)), styles["Cell"]),
-                    Paragraph(self._esc(str(score)), styles["Cell"]),
-                    Paragraph(self._esc(str(text)), styles["Cell"]),
-                ])
+        for rank, doc_id, score, text in rows:
+            data.append([
+                Paragraph(self._esc(str(rank)), styles["Cell"]),
+                Paragraph(self._esc(str(doc_id)), styles["Cell"]),
+                Paragraph(self._esc(str(score)), styles["Cell"]),
+                Paragraph(self._esc(str(text)), styles["Cell"]),
+            ])
 
-            table = Table(
-                data,
-                colWidths=[14 * mm, 38 * mm, 22 * mm, 190 * mm],
-                hAlign="LEFT",
-            )
+        table = Table(
+            data,
+            colWidths=[14 * mm, 38 * mm, 22 * mm, 190 * mm],
+            hAlign="LEFT",
+        )
 
-            table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F9FAFB")),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ]))
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F9FAFB")),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
 
-            return table
+        return table
 
     def _retriever_section(
         self,
