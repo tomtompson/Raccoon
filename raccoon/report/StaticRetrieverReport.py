@@ -12,7 +12,9 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.graphics.shapes import Drawing, Rect, String
-from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, PageBreak
+from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, PageBreak, NextPageTemplate, BaseDocTemplate
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.platypus.doctemplate import PageTemplate, Frame
 import platform
 import torch
 import psutil
@@ -43,14 +45,22 @@ class StaticRetrieverReport:
             from .util.DutchText import DutchText
             self.text_class = DutchText()
 
-        doc = SimpleDocTemplate(
+        doc = BaseDocTemplate(
             str(path),
             pagesize=A4,
-            leftMargin=40,
-            rightMargin=40,
-            topMargin=36,
-            bottomMargin=36,
+            leftMargin=30,
+            rightMargin=30,
+            topMargin=30,
+            bottomMargin=30,
         )
+
+        portrait_frame = Frame(30, 30, A4[0] - 60, A4[1] - 60, id="portrait")
+        landscape_frame = Frame(30, 30, landscape(A4)[0] - 60, landscape(A4)[1] - 60, id="landscape")
+
+        doc.addPageTemplates([
+            PageTemplate(id="Portrait", frames=[portrait_frame], pagesize=A4),
+            PageTemplate(id="Landscape", frames=[landscape_frame], pagesize=landscape(A4)),
+        ])
         doc.build(
             self._story(
                 title=title or "Retriever Report",
@@ -105,7 +115,8 @@ class StaticRetrieverReport:
         story += self._corpus_summary(retrievers, styles)
         story += self._comparison(retrievers, styles, config)
 
-        story += [PageBreak(), Paragraph("Raw Results", styles["Heading2"]), Spacer(1, 12)]
+        story += self._query_graph_pages(retrievers, styles, config)
+
         for retriever in retrievers:
             story += self._retriever_section(
                 retriever=retriever,
@@ -117,6 +128,145 @@ class StaticRetrieverReport:
             )
             story.append(Spacer(1, 12))
         return story
+
+    def _query_graph_pages(
+    self,
+    retrievers: list[Any],
+    styles: dict[str, Any],
+    config: dict[str, Any],
+    ) -> list[Any]:
+        story: list[Any] = []
+
+        for retriever in retrievers:
+            graph_path = getattr(retriever, "query_graph_path", None)
+
+            if not graph_path or not Path(graph_path).exists():
+                continue
+
+            story += self._single_query_graph_page(
+                retriever=retriever,
+                graph_path=graph_path,
+                styles=styles,
+                config=config,
+            )
+
+        return story
+
+
+    def _single_query_graph_page(
+        self,
+        retriever: Any,
+        graph_path: str | Path,
+        styles: dict[str, Any],
+        config: dict[str, Any],
+    ) -> list[Any]:
+        query_id = getattr(retriever, "query_graph_query_id", None)
+        query = getattr(retriever, "query_graph_query", "")
+
+        results = self._results(getattr(retriever, "results", {}) or {})
+        corpus = getattr(retriever, "corpus", {}) or {}
+
+        results_lookup = {qid: hits for qid, hits in results}
+        hits = results_lookup.get(str(query_id), [])
+
+        doc_rows = self._query_graph_document_rows(
+            hits=hits,
+            corpus=corpus,
+            limit=self._int(config.get("query_graph_doc_rows", 8), 5),
+            chars=self._int(config.get("query_graph_doc_chars", 130), 130),
+        )
+
+        return [
+            NextPageTemplate("Landscape"),
+            PageBreak(),
+
+            Paragraph(
+                f"Query Graph - {self._esc(self._name(retriever))}",
+                styles["Section"],
+            ),
+            Paragraph(
+                f"<b>Query:</b> {self._esc(str(query))}",
+                styles["Body"],
+            ),
+            Spacer(1, 5),
+
+            Image(str(graph_path), width=165 * mm, height=105 * mm),
+            Spacer(1, 6),
+
+            Paragraph("Retrieved Documents", styles["Subsection"]),
+            self._query_graph_document_table(doc_rows, styles),
+
+            NextPageTemplate("Portrait"),
+            PageBreak(),
+        ]
+
+
+    def _query_graph_document_rows(
+        self,
+        hits: list[tuple[str, float | None]],
+        corpus: dict[Any, Any],
+        limit: int,
+        chars: int,
+    ) -> list[list[Any]]:
+        rows = []
+
+        for rank, (doc_id, score) in enumerate(hits[:limit], start=1):
+            text = self._truncate(self._get_text(corpus, doc_id), chars)
+
+            rows.append([
+                rank,
+                doc_id,
+                self._format(score),
+                text,
+            ])
+
+        return rows
+
+
+    def _query_graph_document_table(
+        self,
+        rows: list[list[Any]],
+        styles: dict[str, Any],
+    ) -> Table:
+        if not rows:
+            rows = [["-", "-", "-", "No retrieved documents available."]]
+
+        data = [
+            [
+                Paragraph("Rank", styles["HeaderCell"]),
+                Paragraph("Document", styles["HeaderCell"]),
+                Paragraph("Score", styles["HeaderCell"]),
+                Paragraph("Text", styles["HeaderCell"]),
+            ]
+        ]
+
+        for rank, doc_id, score, text in rows:
+            data.append([
+                Paragraph(self._esc(str(rank)), styles["Cell"]),
+                Paragraph(self._esc(str(doc_id)), styles["Cell"]),
+                Paragraph(self._esc(str(score)), styles["Cell"]),
+                Paragraph(self._esc(str(text)), styles["Cell"]),
+            ])
+
+        table = Table(
+            data,
+            colWidths=[14 * mm, 38 * mm, 22 * mm, 190 * mm],
+            hAlign="LEFT",
+        )
+
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F9FAFB")),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+
+        return table
 
     def _retriever_section(
         self,

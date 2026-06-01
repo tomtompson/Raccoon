@@ -22,12 +22,12 @@ OUTPUT_PATH_CHUNKS = Path("data/processed/chunks_600")
 
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
 
-QUERY_PROMPT_PATH = "prompts/query_scenarios/query_generation_ambiguous.txt"
-OUTPUT_PATH_SYNTH = "data/processed/rechtspraken/beir_600_ambiguous"
+QUERY_PROMPT_PATH = "prompts/query_scenarios/query_generation_long_form.txt"
+OUTPUT_PATH_SYNTH = "data/processed/rechtspraken/beir_600_semantic"
 
-RESULT_FILE_PATH = "data/processed/rechtspraken/beir_600_ambiguous/eval_results.json"
+RESULT_FILE_PATH = "data/processed/rechtspraken/beir_600_semantic/eval_results.json"
 
-INPUT_PATH = Path("data/processed/rechtspraken/beir_600_ambiguous")
+INPUT_PATH = Path("data/processed/rechtspraken/beir_600_semantic")
 
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
 TOP_K = 20
@@ -40,27 +40,28 @@ MAX_LENGHT = 512
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 QUERY_PROMPT_NAME = "query"
 PASSAGE_PROMPT_NAME = "document"
-ENCODE_PATH = "data/processed/rechtspraken/beir_600_ambiguous/encode/"
+ENCODE_PATH = "data/processed/rechtspraken/beir_600_semantic/encode/"
 
 RETRIEVERS = []
 
 
-PDF_PATH = Path("data/processed/rechtspraken/report_ambiguous.pdf")
+PDF_PATH = Path("data/processed/report_graph.pdf")
 
 
 def main() -> None:
     #======================================================
     # Document loading and chunking
     #======================================================
-    # loader = FixedDocumentLoader(
-    #     path=SOURCE_PATH_RAW,
-    #     chunk_size=4000, # Document will be split into chunks of 4000 characters then futher split into child chunks // 4
-    #     chunk_overlap=200,
-    # )
-    # documents_parents , documents_child = loader.get_data()
-    # loader.save_chunked_documents(OUTPUT_PATH_CHUNKS / "parent_chunks.json", OUTPUT_PATH_CHUNKS / "child_chunks.json")
+    if not OUTPUT_PATH_CHUNKS.exists():
+        loader = FixedDocumentLoader(
+            path=SOURCE_PATH_RAW,
+            chunk_size=4000, # Document will be split into chunks of 4000 characters then futher split into child chunks // 4
+            chunk_overlap=200,
+        )
+        documents_parents , documents_child = loader.get_data()
+        loader.save_chunked_documents(OUTPUT_PATH_CHUNKS / "parent_chunks.json", OUTPUT_PATH_CHUNKS / "child_chunks.json")
 
-    # print(f"Saved {len(documents_parents)} parent and {len(documents_child)} child documents to {OUTPUT_PATH_CHUNKS}")
+        print(f"Saved {len(documents_parents)} parent and {len(documents_child)} child documents to {OUTPUT_PATH_CHUNKS}")
 
 
     # #======================================================
@@ -74,42 +75,42 @@ def main() -> None:
         "candidate_judging": "prompts/example_rechtspraak/candidate_judging.txt",
         "distribution_validation": "prompts/example_rechtspraak/distribution_validation.txt",
     },)
-    # parent = synth.load_chunks(OUTPUT_PATH_CHUNKS / "parent_chunks.json")
-    # child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "chunks.json")
+    parent = synth.load_chunks(OUTPUT_PATH_CHUNKS / "parent_chunks.json")
+    child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "chunks.json")
 
-    # synth.synthesize_beir(
-    #     parent_chunks=parent,
-    #     child_chunks=child,
-    #     output_dir=OUTPUT_PATH_SYNTH,
-    #     embedding_id="Snowflake/snowflake-arctic-embed-l-v2.0",
-    #     embedding_kwargs= {},
-    #     query_model="qwen3:8b",
-    #     query_validation_model="qwen3:8b",
-    #     judge_model="qwen3:8b",
-    #     qrel_validation_model="qwen3:8b",
-    #     queries_per_parent_to_generate=2,
-    #     max_queries_to_keep_per_parent=1,
-    #     dense_k=25,
-    #     bm25_k=15,
-    #     rrf_top_k=15,
-    #     same_topic_negative_k=3,
-    #     random_negative_k=3,
-    #     min_score_to_keep_in_qrels=2,
-    #     max_qrels_per_query=3,
-    #     include_source_parent_children=True,
-    #     parent_text_limit_prompt=3000,
-    #     candidate_text_limit_prompt=800,
-    #     max_estimated_tokens= 5000,
-    #     overwrite_corpus=False,
-    #     max_parents=None,
-    #     random_seed=42,
-    #     target_queries_per_source=1,
-    #     shuffle_parents=True,
-    #     reranker_id= RERANKER_ID,
-    #     #None,
-    #     rerank_pool_size= 70,
-    #     rerank_keep_top_k=50,
-    # )
+    synth.synthesize_beir(
+        parent_chunks=parent,
+        child_chunks=child,
+        output_dir=OUTPUT_PATH_SYNTH,
+        embedding_id="Snowflake/snowflake-arctic-embed-l-v2.0",
+        embedding_kwargs= {},
+        query_model="qwen3:8b",
+        query_validation_model="qwen3:8b",
+        judge_model="qwen3:8b",
+        qrel_validation_model="qwen3:8b",
+        queries_per_parent_to_generate=2,
+        max_queries_to_keep_per_parent=1,
+        max_query_tokens = 50,
+        dense_k=25,
+        bm25_k=15,
+        rrf_top_k=15,
+        same_topic_negative_k=3,
+        random_negative_k=3,
+        min_score_to_keep_in_qrels=2,
+        max_qrels_per_query=3,
+        include_source_parent_children=True,
+        parent_text_limit_prompt=3000,
+        candidate_text_limit_prompt=800,
+        max_estimated_tokens= 5000,
+        overwrite_corpus=False,
+        max_parents=None,
+        random_seed=42,
+        target_queries_per_source=1,
+        shuffle_parents=True,
+        reranker_id= RERANKER_ID,
+        rerank_pool_size= 70,
+        rerank_keep_top_k=50,
+    )
 
 
 
@@ -156,18 +157,18 @@ def main() -> None:
         eval = EvaluateRetrieval()
         eval_results = eval.evaluate(qrels=qrels, results=retriever_bm25.results, k_values=[1, 3, 5, 10, 20],)
         retriever_bm25.add_retrieval_result(eval_results)
-        append_results(RESULT_FILE_PATH, retriever_bm25.retriever_type,retriever_bm25.retrieval_metrics, retriever_bm25.metrics)
         
 
         eval_results = eval.evaluate(qrels=qrels, results=retriever_bm25.rerank_results, k_values=[1, 3, 5, 10, 20],)
         retriever_bm25.add_rerank_retrieval_result(eval_results)
         append_results(
-            RESULT_FILE_PATH,
-            "reranker-bm25",    
-            {
-                "rerank": retriever_bm25.retrieval_metrics["rerank"],
-                "rerank_time": retriever_bm25.rerank_metrics,
-            }
+        RESULT_FILE_PATH,
+        retriever_bm25.retriever_type,
+        retriever_bm25.retrieval_metrics,
+        retriever_bm25.metrics,
+        {
+            "rerank_time": retriever_bm25.rerank_metrics,
+        },
         )
 
         RETRIEVERS.append(retriever_bm25)
@@ -189,17 +190,17 @@ def main() -> None:
     eval = EvaluateRetrieval()
     eval_results = eval.evaluate(qrels=qrels, results=retriever_dense.results, k_values=[1, 3, 5, 10, 20],)
     retriever_dense.add_retrieval_result(eval_results)
-    append_results(RESULT_FILE_PATH, retriever_dense.retriever_type, retriever_dense.retrieval_metrics, retriever_dense.metrics)
     
     eval_results = eval.evaluate(qrels=qrels, results=retriever_dense.rerank_results, k_values=[1, 3, 5, 10, 20],)
     retriever_dense.add_rerank_retrieval_result(eval_results)
     append_results(
     RESULT_FILE_PATH,
-    "reranker-dense",
+    retriever_dense.retriever_type,
+    retriever_dense.retrieval_metrics,
+    retriever_dense.metrics,
     {
-        "rerank": retriever_dense.retrieval_metrics["rerank"],
         "rerank_time": retriever_dense.rerank_metrics,
-    }
+    },
     )
     
     RETRIEVERS.append(retriever_dense)
@@ -222,19 +223,19 @@ def main() -> None:
     eval = EvaluateRetrieval()
     eval_results = eval.evaluate(qrels=qrels, results=retriever_hybrid.results, k_values=[1, 3, 5, 10, 20],)
     retriever_hybrid.add_retrieval_result(eval_results)
-    append_results(RESULT_FILE_PATH, retriever_hybrid.retriever_type, retriever_hybrid.retrieval_metrics, retriever_hybrid.metrics)
-    
+
     eval_results = eval.evaluate(qrels=qrels, results=retriever_hybrid.rerank_results, k_values=[1, 3, 5, 10, 20],)
     retriever_hybrid.add_rerank_retrieval_result(eval_results)
     append_results(
     RESULT_FILE_PATH,
-    "reranker-hybrid",
+    retriever_hybrid.retriever_type,
+    retriever_hybrid.retrieval_metrics,
+    retriever_hybrid.metrics,
     {
-        "rerank": retriever_hybrid.retrieval_metrics["rerank"],
         "rerank_time": retriever_hybrid.rerank_metrics,
-    }
-)
-    
+    },
+    )
+
     RETRIEVERS.append(retriever_hybrid)  
  
     #======================================================
@@ -292,6 +293,8 @@ def main() -> None:
 
     "ppr_damping": 0.6,
     "ppr_max_result_docs": 500,
+
+    "export_query_graph": True,
 }
 
     retriever_linear = LinearRagRetriever(
@@ -313,19 +316,19 @@ def main() -> None:
         k_values=[1, 3, 5, 10, 50, 100],
     )
     retriever_linear.add_retrieval_result(eval_results)
-    append_results(RESULT_FILE_PATH, retriever_linear.retriever_type, retriever_linear.retrieval_metrics, retriever_linear.metrics)
 
 
-    eval_results = eval.evaluate(qrels=qrels, results=retriever_linear.rerank_results, k_values=[1, 3, 5, 10, 20],)
+    eval_results = evaluator.evaluate(qrels=qrels, results=retriever_linear.rerank_results, k_values=[1, 3, 5, 10, 20],)
     retriever_linear.add_rerank_retrieval_result(eval_results)
     append_results(
     RESULT_FILE_PATH,
-    "reranker-linear",
+    retriever_linear.retriever_type,
+    retriever_linear.retrieval_metrics,
+    retriever_linear.metrics,
     {
-        "rerank": retriever_linear.retrieval_metrics["rerank"],
         "rerank_time": retriever_linear.rerank_metrics,
-    }
-)
+    },
+    )
 
     RETRIEVERS.append(retriever_linear)
     
@@ -360,7 +363,9 @@ def main() -> None:
     },
     }
     report = StaticRetrieverReport()
-    report.generate_report(title = "Retriever Performance Report", ds_description = description, retrievers=RETRIEVERS, qrels=qrels, output_path=PDF_PATH, language="dutch", config=report_config)
+    report.generate_report(title = "Retriever Performance Report", 
+    ds_description = description, 
+    retrievers=RETRIEVERS, qrels=qrels, output_path=PDF_PATH, language="dutch", config=report_config)
 
 
 
