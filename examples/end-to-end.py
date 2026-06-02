@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from raccoon.custom_retriever.DenseRetriever import DenseRetrieverSentenceBert
 from raccoon.custom_retriever.HybridRetriever import HybridRetriever
 from raccoon.custom_retriever.LinearRagRetriever import LinearRagRetriever
@@ -22,7 +20,7 @@ OUTPUT_PATH_CHUNKS = Path("data/processed/chunks_600")
 
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
 
-QUERY_PROMPT_PATH = "prompts/query_scenarios/query_generation_long_form.txt"
+QUERY_PROMPT_PATH = "prompts/example_rechtspraak/query_scenarios/query_generation_long_form.txt"
 OUTPUT_PATH_SYNTH = "data/processed/rechtspraken/beir_600_semantic"
 
 RESULT_FILE_PATH = "data/processed/rechtspraken/beir_600_semantic/eval_results.json"
@@ -36,7 +34,7 @@ TOP_K = 20
 
 TOP_K = 20
 MODEL_ID = "snowflake/snowflake-arctic-embed-l-v2.0"
-MAX_LENGHT = 512
+MAX_LENGTH = 512
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 QUERY_PROMPT_NAME = "query"
 PASSAGE_PROMPT_NAME = "document"
@@ -76,7 +74,7 @@ def main() -> None:
         "distribution_validation": "prompts/example_rechtspraak/distribution_validation.txt",
     },)
     parent = synth.load_chunks(OUTPUT_PATH_CHUNKS / "parent_chunks.json")
-    child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "chunks.json")
+    child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "child_chunks.json")
 
     synth.synthesize_beir(
         parent_chunks=parent,
@@ -121,7 +119,7 @@ def main() -> None:
         model_id=RERANKER_ID,
         top_k=TOP_K,
         batch_size=16,
-        max_length=MAX_LENGHT,
+        max_length=MAX_LENGTH,
         device=DEVICE,
     )
 
@@ -179,7 +177,7 @@ def main() -> None:
     retriever_dense = DenseRetrieverSentenceBert(corpus=corpus, 
                                            queries=queries,
                                            model_id=MODEL_ID,
-                                           max_length=MAX_LENGHT,
+                                           max_length=MAX_LENGTH,
                                            device=DEVICE,
                                            query_prompt_name=QUERY_PROMPT_NAME,
                                            passage_prompt_name=PASSAGE_PROMPT_NAME,
@@ -246,10 +244,10 @@ def main() -> None:
     "embedding_model_name": "snowflake/snowflake-arctic-embed-l-v2.0",
     "spacy_model_name": "nl_core_news_sm",
     "dataset_name": name,
-    "cache_path": "data/processed/rechtspraken/beir_600_ambiguous/linear_rag_cache",
+    "cache_path": "data/processed/rechtspraken/beir_600_semantic/linear_rag_cache",
 
     "device": DEVICE,
-    "max_seq_length": MAX_LENGHT,
+    "max_seq_length": MAX_LENGTH,
 
     # Match DenseRetriever more closely
     "embed_batch_size": 128,

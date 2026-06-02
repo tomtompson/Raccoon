@@ -10,7 +10,7 @@ INPUT_PATH = Path("data/processed/critique_filter.jsonl")
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
 TOP_K = 20
 MODEL_ID = "snowflake/snowflake-arctic-embed-l-v2.0"
-MAX_LENGHT = 206
+MAX_LENGTH = 206
 DEVICE = "cpu"
 QUERY_PROMPT_NAME = "query"
 PASSAGE_PROMPT_NAME = "document"
@@ -22,7 +22,7 @@ def main() -> None:
     retriever = DenseRetrieverSentenceBert(corpus=corpus, 
                                            queries=queries,
                                            model_id=MODEL_ID,
-                                           max_length=MAX_LENGHT,
+                                           max_length=MAX_LENGTH,
                                            device=DEVICE,
                                            query_prompt_name=QUERY_PROMPT_NAME,
                                            passage_prompt_name=PASSAGE_PROMPT_NAME,)
