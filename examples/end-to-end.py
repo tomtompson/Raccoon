@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from raccoon.custom_retriever.DenseRetriever import DenseRetrieverSentenceBert
 from raccoon.custom_retriever.HybridRetriever import HybridRetriever
 from raccoon.custom_retriever.LinearRagRetriever import LinearRagRetriever
@@ -22,10 +20,15 @@ OUTPUT_PATH_CHUNKS = Path("data/processed/symfony_chunks")
 
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
 
+<<<<<<< HEAD:examples/end-to-end.py
+QUERY_PROMPT_PATH = "prompts/example_rechtspraak/query_scenarios/query_generation_long_form.txt"
+OUTPUT_PATH_SYNTH = "data/processed/rechtspraken/beir_600_semantic"
+=======
 QUERY_PROMPT_PATH = "prompts/example_symfony/query_scenarios/query_generation_lexical.txt"
 QUERY_VALIDATION_PATH = "prompts/example_symfony/query_validation.txt"
 CANDIDATE_JUDGING_PATH = "prompts/example_symfony/candidate_judging.txt"
 DISTRIBUTION_VALIDATION_PATH = "prompts/example_symfony/distribution_validation.txt"
+>>>>>>> origin/main:test/end-to-end.py
 
 
 OUTPUT_PATH_SYNTH = Path("data/processed/symfony/symphony_beir_lexical")
@@ -250,7 +253,11 @@ def main() -> None:
     "embedding_model_name": "snowflake/snowflake-arctic-embed-l-v2.0",
     "spacy_model_name": "nl_core_news_sm",
     "dataset_name": name,
+<<<<<<< HEAD:examples/end-to-end.py
+    "cache_path": "data/processed/rechtspraken/beir_600_semantic/linear_rag_cache",
+=======
     "cache_path": LINEAR_CACHE_PATH,
+>>>>>>> origin/main:test/end-to-end.py
 
     "device": DEVICE,
     "max_seq_length": MAX_LENGTH,

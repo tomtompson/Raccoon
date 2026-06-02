@@ -22,6 +22,10 @@ import os
 import random
 
 class StaticRetrieverReport:
+    def __init__(self, language: str = "english") -> None:
+        self.qrels = None
+        self._set_language_text(language)
+
     def generate_report(
         self,
         title: str | None = None,
@@ -33,17 +37,16 @@ class StaticRetrieverReport:
         n_samples: int | None = None,
         language: str = "english",
     ) -> Path:
+        if retrievers is None and ds_description is not None and not isinstance(ds_description, str):
+            retrievers = ds_description
+            ds_description = None
+
         config = config or {}
         path = self._path(output_path)
         styles = self._styles()
         self.qrels = qrels
         retrievers = self._list(retrievers)
-        if language.lower() in ("english", "en"):
-            from .util.EnglishText import EnglishText
-            self.text_class = EnglishText()
-        elif language.lower() in ("dutch", "nl", "nederlands"):
-            from .util.DutchText import DutchText
-            self.text_class = DutchText()
+        self._set_language_text(language)
 
         doc = BaseDocTemplate(
             str(path),
@@ -409,6 +412,7 @@ class StaticRetrieverReport:
         return [Paragraph("Machine Summary", styles["Section"])] + self._table("Machine Summary", rows, styles,)
 
     def _intro(self, config: dict[str, Any], retriever_count: int, styles: dict[str, Any]) -> list[Any]:
+        self._ensure_text_class()
         retriever_word = "retriever" if retriever_count == 1 else "retrievers"
         intro = self.text_class.intro_text.format(retriever_count=retriever_count, retriever_word=retriever_word)
         if not self.text_class.intro_text:
@@ -550,7 +554,7 @@ class StaticRetrieverReport:
             retriever_type = getattr(retriever, "retriever_type", "")
 
             retrieval_metrics = getattr(retriever, "retrieval_metrics", {}) or {}
-            base_metrics = retrieval_metrics.get(retriever_type, {}) if retriever_type else {}
+            base_metrics = retrieval_metrics.get(retriever_type, retrieval_metrics) if retriever_type else retrieval_metrics
             metric_rows = dict(self._metric_rows(base_metrics, config))
 
             ndcg_10 = self._number(metric_rows.get("NDCG@10"))
@@ -589,19 +593,33 @@ class StaticRetrieverReport:
         
             # reranker 
             retrieval_metrics = getattr(retriever, "retrieval_metrics", {}) or {}
-            rerank_metrics = retrieval_metrics.get("rerank", {}) or {}
-            metric_rows = dict(self._metric_rows(rerank_metrics, config))
+            rerank_retrieval_metrics = (
+                getattr(retriever, "rerank_retrieval_metrics", None)
+                or retrieval_metrics.get("rerank", {})
+            )
+            metric_rows = dict(self._metric_rows(rerank_retrieval_metrics, config))
+            metrics = getattr(retriever, "rerank_metrics", {}) or {}
+
+            if not metric_rows and not metrics:
+                continue
 
             ndcg_10 = self._number(metric_rows.get("NDCG@10"))
             recall_10 = self._number(metric_rows.get("Recall@10"))
 
-            metrics = getattr(retriever, "rerank_metrics", {}) or {}
             query_time_rerank = self._number(metrics.get("total_wall_time_sec"))
-
             time_per_query_rerank = self._number(metrics.get("avg_time_query_sec"))
 
-            combined_time = time_per_query + time_per_query_rerank
+            combined_time = (
+                time_per_query + time_per_query_rerank
+                if time_per_query is not None and time_per_query_rerank is not None
+                else None
+            )
             combined_qps = 1 / combined_time if combined_time else None
+            combined_query_time = (
+                query_time + query_time_rerank
+                if query_time is not None and query_time_rerank is not None
+                else query_time_rerank
+            )
 
             rows.append(
                 {
@@ -609,8 +627,8 @@ class StaticRetrieverReport:
                     "ndcg_10": ndcg_10,
                     "recall_10": recall_10,
                     "index_time": index_time,
-                    "query_time": query_time_rerank + query_time if query_time_rerank and query_time else None,
-                    "time_per_query": time_per_query + time_per_query_rerank if time_per_query and time_per_query_rerank else None,
+                    "query_time": combined_query_time,
+                    "time_per_query": combined_time,
                     "qps": combined_qps,
                     "storage_mb": storage_mb,
                     "dps": dps,
@@ -1294,8 +1312,11 @@ class StaticRetrieverReport:
             retrieval_metrics = getattr(retriever, "retrieval_metrics", {}) or {}
 
             base_key = getattr(retriever, "retriever_type", None)
-            base_metrics = retrieval_metrics.get(base_key, {}) if base_key else {}
-            rerank_metrics = retrieval_metrics.get("rerank", {})
+            base_metrics = retrieval_metrics.get(base_key, retrieval_metrics) if base_key else retrieval_metrics
+            rerank_metrics = (
+                getattr(retriever, "rerank_retrieval_metrics", None)
+                or retrieval_metrics.get("rerank", {})
+            )
 
             base_rows = dict(self._metric_rows(base_metrics, config))
             rerank_rows = dict(self._metric_rows(rerank_metrics, config))
@@ -1307,6 +1328,51 @@ class StaticRetrieverReport:
                 rows.append((f"{name} + rerank", rerank_rows))
 
         return rows
+
+    def _metric_maps(
+        self,
+        retrievers: list[Any],
+        metric_attr: str,
+        config: dict[str, Any],
+    ) -> list[tuple[str, dict[str, float]]]:
+        rows: list[tuple[str, dict[str, float]]] = []
+
+        for retriever in retrievers:
+            metrics = getattr(retriever, metric_attr, None) or {}
+            if metric_attr == "retrieval_metrics" and isinstance(metrics, dict):
+                retriever_type = getattr(retriever, "retriever_type", None)
+                if retriever_type and isinstance(metrics.get(retriever_type), dict):
+                    metrics = metrics[retriever_type]
+            elif metric_attr == "rerank_retrieval_metrics" and not metrics:
+                retrieval_metrics = getattr(retriever, "retrieval_metrics", {}) or {}
+                if isinstance(retrieval_metrics, dict):
+                    metrics = retrieval_metrics.get("rerank", {})
+
+            metric_rows = dict(self._metric_rows(metrics, config))
+            if metric_rows:
+                rows.append((self._name(retriever), metric_rows))
+
+        return rows
+
+    def _metric_comparison(
+        self,
+        title: str,
+        metric_maps: list[tuple[str, dict[str, float]]],
+        metrics: list[str],
+        styles: dict[str, Any],
+    ) -> list[Any]:
+        if not metric_maps or not metrics:
+            return []
+
+        story: list[Any] = [
+            Paragraph(self._esc(title), styles["Subsection"]),
+            self._comparison_table(metric_maps, metrics, styles),
+            Spacer(1, 6),
+            self._grouped_bar_chart(metric_maps, metrics),
+            Spacer(1, 6),
+        ]
+        story += self._metric_explanation(title, styles)
+        return story
 
 
     def _comparison_color_table(self, styles: dict[str, Any]) -> list[Any]:
@@ -1492,6 +1558,7 @@ class StaticRetrieverReport:
         if title != "Retrieval Metrics":
             return []
 
+        self._ensure_text_class()
         story = [
             Paragraph(self.text_class.metric_guide_text, styles["Note"]),
             Paragraph(self.text_class.metric_text, styles["Note"]),
@@ -1971,6 +2038,19 @@ class StaticRetrieverReport:
             return values.get(int(key))
         except (TypeError, ValueError):
             return values.get(str(key))
+
+    def _set_language_text(self, language: str) -> None:
+        if language.lower() in ("dutch", "nl", "nederlands"):
+            from .util.DutchText import DutchText
+            self.text_class = DutchText()
+            return
+
+        from .util.EnglishText import EnglishText
+        self.text_class = EnglishText()
+
+    def _ensure_text_class(self) -> None:
+        if not hasattr(self, "text_class"):
+            self._set_language_text("english")
 
     def _styles(self) -> dict[str, Any]:
         styles = getSampleStyleSheet()

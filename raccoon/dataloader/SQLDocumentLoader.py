@@ -29,6 +29,10 @@ class SQLDocumentLoader(BaseLoader):
         self.content_columns = content_columns
         self.metadata_columns = metadata_columns or []
         self.where = where
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.parent_data: List[Document] | None = None
+        self.child_data: List[Document] | None = None
 
         self.engine: Engine = create_engine(connection_string)
 

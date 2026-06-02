@@ -21,7 +21,7 @@ SOURCE_PATH_RAW = Path("data/raw/rechtspraak")
 OUTPUT_PATH_CHUNKS = Path("data/processed/chunks_recht")
 
 
-QUERY_PROMPT_PATH = "prompts/query_scenarios/query_generation_ambiguous.txt"
+QUERY_PROMPT_PATH = "prompts/example_rechtspraak/query_scenarios/query_generation_ambiguous.txt"
 INPUT_PATH = Path("data/processed/rechtspraken/beir_600")
 
 def main() -> None:

@@ -22,7 +22,7 @@ log = logging.getLogger("query_scenario_benchmark")
 # Parameters: edit these, then run `python test/query_scenario_benchmark.py`
 # =============================================================================
 
-PROMPT = REPO_ROOT / "prompts/query_scenarios/query_generation_semantic.txt"
+PROMPT = REPO_ROOT / "prompts/example_rechtspraak/query_scenarios/query_generation_semantic.txt"
 DATASET_DIR = REPO_ROOT / "datasets/synthetic_prompt_benchmark"
 REPORT_DIR = REPO_ROOT / "reports/query_scenario_benchmark"
 
