@@ -15,21 +15,28 @@ from beir.retrieval.evaluation import EvaluateRetrieval
 import torch
 
 
-SOURCE_PATH_RAW = Path("data/raw/rechtspraak")
-OUTPUT_PATH_CHUNKS = Path("data/processed/chunks_600")
+SOURCE_PATH_RAW = Path("data/raw/symfony")
+OUTPUT_PATH_CHUNKS = Path("data/processed/symfony_chunks")
 
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
 
+<<<<<<< HEAD:examples/end-to-end.py
 QUERY_PROMPT_PATH = "prompts/example_rechtspraak/query_scenarios/query_generation_long_form.txt"
 OUTPUT_PATH_SYNTH = "data/processed/rechtspraken/beir_600_semantic"
+=======
+QUERY_PROMPT_PATH = "prompts/example_symfony/query_scenarios/query_generation_lexical.txt"
+QUERY_VALIDATION_PATH = "prompts/example_symfony/query_validation.txt"
+CANDIDATE_JUDGING_PATH = "prompts/example_symfony/candidate_judging.txt"
+DISTRIBUTION_VALIDATION_PATH = "prompts/example_symfony/distribution_validation.txt"
+>>>>>>> origin/main:test/end-to-end.py
 
-RESULT_FILE_PATH = "data/processed/rechtspraken/beir_600_semantic/eval_results.json"
 
-INPUT_PATH = Path("data/processed/rechtspraken/beir_600_semantic")
+OUTPUT_PATH_SYNTH = Path("data/processed/symfony/symphony_beir_lexical")
+
+RESULT_FILE_PATH = Path("data/processed/symfony/symphony_beir_lexical/eval_results.json")
+
 
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
-TOP_K = 20
-
 
 
 TOP_K = 20
@@ -38,12 +45,13 @@ MAX_LENGTH = 512
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 QUERY_PROMPT_NAME = "query"
 PASSAGE_PROMPT_NAME = "document"
-ENCODE_PATH = "data/processed/rechtspraken/beir_600_semantic/encode/"
+ENCODE_PATH = Path("data/processed/symfony/symphony_beir_lexical/encode/")
+LINEAR_CACHE_PATH = Path("data/processed/symfony/symphony_beir_lexical/linear_rag_cache")
 
 RETRIEVERS = []
 
 
-PDF_PATH = Path("data/processed/report_graph.pdf")
+PDF_PATH = Path("data/processed/symfony/report_lexical.pdf")
 
 
 def main() -> None:
@@ -65,50 +73,51 @@ def main() -> None:
     # #======================================================
     # # Synthesize dataset
     # #======================================================
+    
     synth = OllamaSynthesizer(
     host="http://localhost:11434",
     prompt_paths={
         "query_generation": QUERY_PROMPT_PATH,
-        "query_validation": "prompts/example_rechtspraak/query_validation.txt",
-        "candidate_judging": "prompts/example_rechtspraak/candidate_judging.txt",
-        "distribution_validation": "prompts/example_rechtspraak/distribution_validation.txt",
+        "query_validation": QUERY_VALIDATION_PATH,
+        "candidate_judging": CANDIDATE_JUDGING_PATH,
+        "distribution_validation": DISTRIBUTION_VALIDATION_PATH,
     },)
     parent = synth.load_chunks(OUTPUT_PATH_CHUNKS / "parent_chunks.json")
     child = synth.load_chunks(OUTPUT_PATH_CHUNKS / "child_chunks.json")
-
-    synth.synthesize_beir(
-        parent_chunks=parent,
-        child_chunks=child,
-        output_dir=OUTPUT_PATH_SYNTH,
-        embedding_id="Snowflake/snowflake-arctic-embed-l-v2.0",
-        embedding_kwargs= {},
-        query_model="qwen3:8b",
-        query_validation_model="qwen3:8b",
-        judge_model="qwen3:8b",
-        qrel_validation_model="qwen3:8b",
-        queries_per_parent_to_generate=2,
-        max_queries_to_keep_per_parent=1,
-        max_query_tokens = 50,
-        dense_k=25,
-        bm25_k=15,
-        rrf_top_k=15,
-        same_topic_negative_k=3,
-        random_negative_k=3,
-        min_score_to_keep_in_qrels=2,
-        max_qrels_per_query=3,
-        include_source_parent_children=True,
-        parent_text_limit_prompt=3000,
-        candidate_text_limit_prompt=800,
-        max_estimated_tokens= 5000,
-        overwrite_corpus=False,
-        max_parents=None,
-        random_seed=42,
-        target_queries_per_source=1,
-        shuffle_parents=True,
-        reranker_id= RERANKER_ID,
-        rerank_pool_size= 70,
-        rerank_keep_top_k=50,
-    )
+    if not OUTPUT_PATH_SYNTH.exists():
+        synth.synthesize_beir(
+            parent_chunks=parent,
+            child_chunks=child,
+            output_dir=OUTPUT_PATH_SYNTH,
+            embedding_id="Snowflake/snowflake-arctic-embed-l-v2.0",
+            embedding_kwargs= {},
+            query_model="qwen3:8b",
+            query_validation_model="qwen3:8b",
+            judge_model="qwen3:8b",
+            qrel_validation_model="qwen3:8b",
+            queries_per_parent_to_generate=2,
+            max_queries_to_keep_per_parent=1,
+            max_query_tokens = 50,
+            dense_k=15,
+            bm25_k=10,
+            rrf_top_k=10,
+            same_topic_negative_k=3,
+            random_negative_k=3,
+            min_score_to_keep_in_qrels=0,
+            max_qrels_per_query=5,
+            include_source_parent_children=True,
+            parent_text_limit_prompt=3000,
+            candidate_text_limit_prompt=1200,
+            max_estimated_tokens= 5000,
+            overwrite_corpus=False,
+            max_parents=None,
+            random_seed=42,
+            target_queries_per_source=2,
+            shuffle_parents=True,
+            reranker_id= RERANKER_ID,
+            rerank_pool_size= 70,
+            rerank_keep_top_k=50,
+        )
 
 
 
@@ -127,7 +136,7 @@ def main() -> None:
     # BM25 Retrieval and evaluation
     #======================================================
     
-    corpus, queries, qrels, name = load_local_beir_dataset(INPUT_PATH, "test")
+    corpus, queries, qrels, name = load_local_beir_dataset(OUTPUT_PATH_SYNTH, "test")
 
     description = synth.generate_description_of_ds(
         model="qwen3:8b",
@@ -244,7 +253,11 @@ def main() -> None:
     "embedding_model_name": "snowflake/snowflake-arctic-embed-l-v2.0",
     "spacy_model_name": "nl_core_news_sm",
     "dataset_name": name,
+<<<<<<< HEAD:examples/end-to-end.py
     "cache_path": "data/processed/rechtspraken/beir_600_semantic/linear_rag_cache",
+=======
+    "cache_path": LINEAR_CACHE_PATH,
+>>>>>>> origin/main:test/end-to-end.py
 
     "device": DEVICE,
     "max_seq_length": MAX_LENGTH,

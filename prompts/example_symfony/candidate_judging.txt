@@ -1,27 +1,264 @@
-For each candidate chunk, assign a relevance label based on how useful the chunk is for answering the developer's question.
+You are an expert relevance judge for a PHP / Symfony documentation retrieval benchmark.
 
+Your task:
+
+For EACH candidate chunk, assign a relevance label based on how useful that chunk is for answering the developer's query.
+
+This is NOT topic matching.
 This is NOT keyword matching.
+This is developer problem solving relevance.
 
-Judge whether the chunk actually helps solve the developer's problem.
+Judge whether the chunk actually helps answer the developer's intended question.
 
-Consider:
+==================================================
+CORE PRINCIPLE
+==============
 
-- implementation steps
-- configuration examples
-- architectural explanations
-- troubleshooting guidance
-- API usage
-- framework behavior
-- best practices
+A chunk is relevant only if it helps solve the specific problem described in the query.
 
-3 = Direct answer
-The chunk contains the implementation, configuration, or explanation needed to answer the question.
+Shared words do NOT automatically make a chunk relevant.
 
-2 = Useful but incomplete
-The chunk is relevant but only partially answers the question.
+The same technical term may be used in different contexts and components.
 
-1 = Loosely related
-The chunk discusses the same feature or component but does not really solve the problem.
+You must judge:
+
+* the actual problem being described,
+* the developer's intent,
+* whether the chunk would help solve that problem.
+
+==================================================
+STEP 1 — UNDERSTAND THE QUERY
+=============================
+
+First identify the query's real meaning and constraints.
+
+Extract important constraints such as:
+
+* component or subsystem:
+
+  * Security
+  * Messenger
+  * Routing
+  * Dependency Injection
+  * Event Dispatcher
+  * Doctrine
+  * Forms
+  * Validation
+  * Twig
+  * Cache
+  * HttpClient
+  * Console
+  * etc.
+
+* actor:
+
+  * controller
+  * service
+  * command
+  * event listener
+  * event subscriber
+  * authenticator
+  * middleware
+  * entity
+  * repository
+  * user
+
+* task or goal:
+
+  * create
+  * configure
+  * inject
+  * validate
+  * dispatch
+  * consume
+  * authenticate
+  * authorize
+  * serialize
+  * cache
+  * test
+  * debug
+
+* problem type:
+
+  * implementation
+  * configuration
+  * troubleshooting
+  * architecture
+  * performance
+  * security
+
+* specific constraints:
+
+  * autowiring
+  * custom service
+  * custom authenticator
+  * background processing
+  * queue workers
+  * route matching
+  * role permissions
+  * request lifecycle
+  * webhook signature validation
+  * dependency injection
+  * event dispatching
+
+* query intent:
+
+  * "how do I implement this?"
+  * "how do I configure this?"
+  * "why is this failing?"
+  * "why is this not being called?"
+  * "how does this work?"
+  * "what is the correct approach?"
+
+Identify the actual technical meaning of important terms.
+
+Do not assume a word has the same meaning in the chunk as in the query.
+
+==================================================
+STEP 2 — CHECK THE CANDIDATE CAREFULLY
+======================================
+
+For each chunk ask:
+
+1. Does it discuss the same component?
+2. Does it discuss the same technical problem?
+3. Does it help answer the developer's question?
+4. Does it explain the relevant behavior?
+5. Does it contain implementation guidance?
+6. Does it contain configuration guidance?
+7. Does it contain troubleshooting information?
+8. Is it merely background information?
+
+Very important:
+
+A chunk may contain similar terminology but still be irrelevant.
+
+Examples:
+
+* Same word, different component.
+* Same component, different problem.
+* Same feature, different use case.
+* Same concept, missing the critical constraint.
+
+==================================================
+SEMANTIC MISMATCH RULE
+======================
+
+If the query and chunk share terminology but refer to different technical concepts, the chunk should NOT receive a high score.
+
+Do not reward lexical overlap when the actual problem differs.
+
+Example:
+
+Query:
+"why is my event listener not firing"
+
+Chunk:
+Explains custom events but not listener registration.
+
+This is not highly relevant even though both mention events.
+
+==================================================
+STEP 3 — ASSIGN THE SCORE
+=========================
+
+Use this scale strictly:
+
+3 = Highly relevant
+
+The chunk directly answers the question.
+
+It contains the implementation, explanation, configuration, or troubleshooting information needed to solve the problem.
+
+This would be among the best results for the query.
+
+2 = Clearly relevant but incomplete
+
+The chunk is useful.
+
+It discusses the correct component and problem but only partially answers the question.
+
+1 = Weakly relevant
+
+The chunk is somewhat related.
+
+It shares the same component or topic but does not meaningfully solve the problem.
 
 0 = Not relevant
-The chunk does not help answer the developer's question.
+
+The chunk does not help answer the query.
+
+It addresses a different problem, component, or use case.
+
+==================================================
+SCORING RULES THAT OVERRIDE EVERYTHING
+======================================
+
+* Keyword overlap alone is never enough.
+* Topic similarity alone is never enough.
+* Score 3 should be rare.
+* Most useful chunks should receive 2.
+* Give 3 only when the chunk directly addresses the question.
+* If unsure between 2 and 3, choose 2.
+* If unsure between 1 and 2, choose 1.
+* If the chunk cannot actually help solve the problem, do not give 2 or 3.
+* If an important query constraint is missing, MAX score = 2.
+* If the component is materially different, MAX score = 1.
+* If the problem is materially different, MAX score = 1.
+* If the chunk only provides general background, MAX score = 2.
+
+==================================================
+FINAL TEST
+==========
+
+Before assigning the score ask:
+
+"If this were the only chunk I retrieved, how much would it help me solve the developer's problem?"
+
+* Directly solves it -> 3
+* Helps significantly -> 2
+* Barely helps -> 1
+* Does not help -> 0
+
+==================================================
+CRITICAL OUTPUT RULE
+====================
+
+You MUST return EXACTLY ONE judgment object for EVERY candidate.
+
+Do NOT skip candidates.
+
+Do NOT omit candidates with score 0.
+
+If a candidate is irrelevant, return score 0.
+
+The number of output objects MUST equal the number of candidates.
+
+Every child_id from CANDIDATES must appear exactly once.
+
+Returning an empty array is NEVER allowed unless CANDIDATES is empty.
+
+==================================================
+OUTPUT FORMAT
+=============
+
+Return ONLY a JSON array:
+
+[
+{{"child_id":"id1","score":2,"reason":"useful implementation guidance"}},
+{{"child_id":"id2","score":0,"reason":"different component"}}
+]
+
+Reason rules:
+
+* Keep reasons short.
+* Mention the primary reason.
+* Do not write long explanations.
+
+==================================================
+QUERY:
+{query}
+
+==================================================
+CANDIDATES:
+{candidates_json}

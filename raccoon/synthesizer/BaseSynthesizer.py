@@ -401,12 +401,27 @@ class BaseSynthesizer(ABC):
 
         if est <= max_estimated_tokens or len(candidates) == 1:
             log.judge(f"[green]Estimate token count =  {est}, max count = {max_estimated_tokens}[/green]")
-            return self._judge_candidates_with_ollama_realistic(
+            result = self._judge_candidates_with_ollama_realistic(
                 query=query,
                 candidates=candidates,
                 model=model,
                 candidate_text_limit=candidate_text_limit,
             )
+
+            log.judge(
+                f"Leaf judge result "
+                f"| query='{query}' "
+                f"| input_candidates={len(candidates)} "
+                f"| returned_judgments={len(result)}"
+            )
+
+            if len(result) == 0:
+                log.judge(
+                    f"[red]Judge returned empty for non-empty candidate batch[/red] "
+                    f"| candidate_ids={[c.get('child_id') for c in candidates[:5]]}"
+                )
+
+            return result
 
         mid = len(candidates) // 2
         
@@ -477,7 +492,7 @@ class BaseSynthesizer(ABC):
         bm25_index = SimpleBM25(child_records)
 
         if overwrite_corpus or not corpus_path.exists():
-            with open(corpus_path, "w", encoding="utf-8") as f:
+            with open(corpus_path, "w+", encoding="utf-8") as f:
                 for rec in child_records:
                     row = {
                         "_id": rec["child_id"],
@@ -487,7 +502,7 @@ class BaseSynthesizer(ABC):
                     f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
         if not qrels_path.exists():
-            with open(qrels_path, "w", encoding="utf-8") as f:
+            with open(qrels_path, "w+", encoding="utf-8") as f:
                 f.write("query-id\tcorpus-id\tscore\n")
 
         seen_query_texts, query_counter = _load_existing_query_texts(queries_path)
@@ -672,6 +687,19 @@ class BaseSynthesizer(ABC):
                         candidates = _merge_dictionaries(pooled_candidates, pooled_negatives)
                         
                         log.rerank(f"Reranking finished new candidate count = {len_pooled_candidates_rerank}")
+
+                    log.judge(
+                        f"Calling judge model | query='{query}' | "
+                        f"candidates={len(candidates)} | "
+                        f"model={judge_model}"
+                    )
+
+                    log.judge(
+                        f"Judge candidate ids | "
+                        f"ids={[c.get('child_id') for c in candidates[:5]]}"
+                    )
+
+
                     try:
                         len_total_candidates = len(candidates)
                         log.judge(f"Lenght total candidates = {len_total_candidates}, negatives = {len_pooled_negatives}, positieves = {len_total_candidates - len_pooled_negatives} ")
@@ -685,6 +713,14 @@ class BaseSynthesizer(ABC):
                     except Exception as e:
                         log.error(f"Judge failed for parent={parent_id}, query='{query}': {e}")
                         continue
+
+                    score_dist = Counter(j["score"] for j in judgments)
+
+                    log.judge(
+                        f"Judging complete for query='{query}' | "
+                        f"total_judgments={len(judgments)} | "
+                        f"score_distribution={dict(score_dist)}"
+                    )  
 
                     judged_by_id = {j["child_id"]: j["score"] for j in judgments}
                     judgment_lookup = {j["child_id"]: j for j in judgments}
@@ -722,6 +758,17 @@ class BaseSynthesizer(ABC):
                         min_score_to_keep=min_score_to_keep_in_qrels,
                         max_qrels_per_query=max_qrels_per_query,
                     )
+
+                    score_histogram = _count_scores(judged_by_id)
+
+                    log.query(
+                        f"QREL selection complete "
+                        f"| query='{query}' "
+                        f"| score_histogram={score_histogram} "
+                        f"| selected={len(selected_qrels)} "
+                        f"| min_score={min_score_to_keep_in_qrels}"
+                    )
+
 
                     if not selected_qrels:
                         log.query(
@@ -810,7 +857,7 @@ class BaseSynthesizer(ABC):
     # =========================
 
     def load_chunks(self, path: Path):
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r+", encoding="utf-8") as f:
             data = json.load(f)
 
         with Progress() as progress:

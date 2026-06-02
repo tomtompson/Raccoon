@@ -230,17 +230,19 @@ class OllamaSynthesizer(BaseSynthesizer):
         )
 
         schema = {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "child_id": {"type": "string"},
-                    "score": {"type": "integer"},
-                    "reason": {"type": "string", "maxLength": 160},
-                },
-                "required": ["child_id", "score", "reason"],
+        "type": "array",
+        "minItems": len(formatted_candidates),
+        "maxItems": len(formatted_candidates),
+        "items": {
+            "type": "object",
+            "properties": {
+                "child_id": {"type": "string"},
+                "score": {"type": "integer", "minimum": 0, "maximum": 3},
+                "reason": {"type": "string"},
             },
-        }
+            "required": ["child_id", "score", "reason"],
+        },
+    }
 
         content = self._ollama_chat_json(
             model=model,
