@@ -42,48 +42,12 @@ from .helper.helper import (
 
 from .helper.SimpleBM25 import SimpleBM25
 from .config import SynthesisConfig
+from raccoon.logging_utils import get_raccoon_logger, silence_noisy_dependency_logs
 
-import logging
 from rich.progress import Progress
 
-QUERY_LEVEL = 25
-logging.addLevelName(QUERY_LEVEL, "QUERY")
-JUDGE_LEVEL = 26
-logging.addLevelName(JUDGE_LEVEL, "JUDGE")
-START_LEVEL = 27
-logging.addLevelName(START_LEVEL, "START")
-END_LEVEL = 28
-logging.addLevelName(END_LEVEL, "END")
-RERANK_LEVEL = 29
-logging.addLevelName(RERANK_LEVEL, "RERANK")
-
-
-class RaccoonLogger(logging.LoggerAdapter):
-    def query(self, message, *args, **kwargs):
-        self.log(QUERY_LEVEL, message, *args, **kwargs)
-
-    def judge(self, message, *args, **kwargs):
-        self.log(JUDGE_LEVEL, message, *args, **kwargs)
-
-    def start(self, message, *args, **kwargs):
-        self.log(START_LEVEL, message, *args, **kwargs)
-
-    def end(self, message, *args, **kwargs):
-        self.log(END_LEVEL, message, *args, **kwargs)
-
-    def rerank(self, message, *args, **kwargs):
-        self.log(RERANK_LEVEL, message, *args, **kwargs)
-
-
-log = RaccoonLogger(logging.getLogger(__name__), {})
-
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
-logging.getLogger("huggingface_hub").setLevel(logging.WARNING)
-logging.getLogger("huggingface").setLevel(logging.WARNING)
-logging.getLogger("transformers").setLevel(logging.WARNING)
-logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
+log = get_raccoon_logger(__name__)
+silence_noisy_dependency_logs()
 
 class BaseSynthesizer(ABC):
     @abstractmethod

@@ -1,35 +1,56 @@
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from typing import Dict, Any
-import torch
-import time
+from __future__ import annotations
 
-class Reranker():
-    def __init__ (
-            self,
-            model_id: str,
-            top_k: int,
-            batch_size: int,
-            max_length: int,
-            device = "cuda",
-            config: dict | None = None
-    ):
-        self.config = config
+import time
+from typing import Any
+
+import torch
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+from raccoon.logging_utils import get_logger
+
+log = get_logger(__name__)
+
+
+class Reranker:
+    def __init__(
+        self,
+        model_id: str,
+        top_k: int,
+        batch_size: int,
+        max_length: int,
+        device: str = "cuda",
+        config: dict | None = None,
+    ) -> None:
+        self.config = config or {}
         self.model_id = model_id
         self.top_k = top_k
         self.batch_size = batch_size
         self.max_length = max_length
         self.device = device
+        log.info(
+            "Initializing reranker model=%s device=%s top_k=%s batch_size=%s max_length=%s",
+            self.model_id,
+            self.device,
+            self.top_k,
+            self.batch_size,
+            self.max_length,
+        )
         self._load_reranker()
-        self.rerank_retrieval_metrics = {}        
+        self.rerank_retrieval_metrics = {}
 
-    def _load_reranker(self,) -> None:
+    def _load_reranker(self) -> None:
+        load_start = time.perf_counter()
+        log.info("Loading reranker tokenizer: %s", self.model_id)
         tokenizer = AutoTokenizer.from_pretrained(self.model_id, trust_remote_code=True)
-        model_kwargs: Dict[str, Any] = {"trust_remote_code": True}
+        model_kwargs: dict[str, Any] = {"trust_remote_code": True}
         if torch.cuda.is_available():
             model_kwargs["dtype"] = torch.float16
+            log.info("CUDA available; loading reranker with float16 weights")
         if "jina" in self.model_id.lower():
             model_kwargs["use_flash_attn"] = True
+            log.info("Enabled Jina flash attention for reranker")
 
+        log.info("Loading reranker model: %s", self.model_id)
         reranker_model = AutoModelForSequenceClassification.from_pretrained(
             self.model_id,
             **model_kwargs,
@@ -37,16 +58,20 @@ class Reranker():
 
         self.tokenizer = tokenizer
         self.reranker = reranker_model
+        log.info("Loaded reranker model in %.2fs", time.perf_counter() - load_start)
 
 
-    def rerank_with_transformers(
-            self,
-            corpus,
-            queries,
-            results,):
-        
+    def rerank_with_transformers(self, corpus, queries, results):
         rerank_results = {}
         query_ids = list(results.keys())
+        log.info(
+            "Starting rerank: queries=%d top_k=%s batch_size=%s max_length=%s device=%s",
+            len(query_ids),
+            self.top_k,
+            self.batch_size,
+            self.max_length,
+            self.device,
+        )
 
         total_pairs = 0
         total_batches = 0
@@ -67,8 +92,11 @@ class Reranker():
         use_cuda = torch.cuda.is_available() and str(self.device).startswith("cuda")
 
         if use_cuda:
+            log.info("CUDA reranking enabled on device=%s", self.device)
             torch.cuda.reset_peak_memory_stats(self.device)
             torch.cuda.synchronize()
+        else:
+            log.info("CUDA reranking disabled; using device=%s", self.device)
 
         wall_start = time.perf_counter()
 
@@ -151,7 +179,7 @@ class Reranker():
                 per_query_times.append(query_time)
 
                 if qi % 50 == 0 or qi == len(query_ids):
-                    print(f"Reranked {qi}/{len(query_ids)} queries")
+                    log.info("Reranked %d/%d queries", qi, len(query_ids))
 
         if use_cuda:
             torch.cuda.synchronize()
@@ -190,20 +218,20 @@ class Reranker():
                 / (1024 ** 3)
             )
 
-        print("\nReranking stats")
-        print(f"Total queries: {len(query_ids)}")
-        print(f"Total pairs: {total_pairs}")
-        print(f"Total batches: {total_batches}")
-        print(f"Total input tokens: {total_input_tokens}")
-        print(f"Total wall time: {total_time:.2f}s")
-        print(f"Avg time/query: {avg_time_query:.4f}s")
-        print(f"Avg time/batch: {avg_time_batch:.4f}s")
-        print(f"Pairs/sec: {pairs_per_sec:.2f}")
-        print(f"Queries/sec: {queries_per_sec:.2f}")
-        print(f"Tokens/sec: {tokens_per_sec:.2f}")
+        log.info("Reranking stats")
+        log.info("Total queries: %d", len(query_ids))
+        log.info("Total pairs: %d", total_pairs)
+        log.info("Total batches: %d", total_batches)
+        log.info("Total input tokens: %d", total_input_tokens)
+        log.info("Total wall time: %.2fs", total_time)
+        log.info("Avg time/query: %.4fs", avg_time_query)
+        log.info("Avg time/batch: %.4fs", avg_time_batch)
+        log.info("Pairs/sec: %.2f", pairs_per_sec)
+        log.info("Queries/sec: %.2f", queries_per_sec)
+        log.info("Tokens/sec: %.2f", tokens_per_sec)
 
         if use_cuda:
-            print(f"Peak GPU memory: {peak_mem:.2f} GB")
+            log.info("Peak GPU memory: %.2f GB", peak_mem)
 
 
         rerank_metrics = {

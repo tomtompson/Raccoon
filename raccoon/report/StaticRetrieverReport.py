@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import datetime
-import logging
 from pathlib import Path
 from statistics import mean
 from typing import Any
 from xml.sax.saxutils import escape
 
+from raccoon.logging_utils import get_logger
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
@@ -21,7 +21,7 @@ import psutil
 import os
 import random
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 class StaticRetrieverReport:
     def __init__(self, language: str = "english") -> None:

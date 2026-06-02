@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import logging
 from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, Any
@@ -9,12 +8,14 @@ from typing import TYPE_CHECKING, Any
 from elastic_transport import ConnectionError as ElasticConnectionError
 from elasticsearch import ApiError, Elasticsearch
 
+from raccoon.logging_utils import get_logger
+
 from .BaseRetriever import BaseRetriever
 
 if TYPE_CHECKING:
     from raccoon.custom_retriever.util.Reranker import Reranker
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 class BM25Retriever(BaseRetriever):
@@ -106,6 +107,7 @@ class BM25Retriever(BaseRetriever):
             raise ValueError("No corpus available to index.")
 
         index_start = perf_counter()
+        log.info("Indexing BM25 corpus: index=%s documents=%d", self.index_name, len(self.corpus))
         self.create_index()
         for doc_id, doc in self.corpus.items():
             text = doc.get("text", "")
@@ -132,13 +134,13 @@ class BM25Retriever(BaseRetriever):
         self.is_ready = True
         index_latency = perf_counter() - index_start
         document_count = len(self.corpus)
+        log.info("Finished BM25 indexing in %.2fs", index_latency)
 
         storage_size_bytes = 0
         storage_size_mb = 0.0
 
         try:
             stats = self.client.indices.stats(index=self.index_name)
-            log.debug("Elasticsearch index stats for %s: %s", self.index_name, stats)
             storage_size_bytes = (
                 stats["indices"][self.index_name]["total"]["store"]["size_in_bytes"]
             )
@@ -174,6 +176,7 @@ class BM25Retriever(BaseRetriever):
         top_k = top_k or self.topk
         results: dict[str, dict[str, float]] = {}
         search_start = perf_counter()
+        log.info("Starting BM25 search: index=%s queries=%d top_k=%s", self.index_name, len(self.queries), top_k)
 
         for query_id, query_text in self.queries.items():
             payload = {
@@ -202,6 +205,7 @@ class BM25Retriever(BaseRetriever):
         self.results = results
         search_latency = perf_counter() - search_start
         query_count = len(self.queries)
+        log.info("Finished BM25 search in %.2fs", search_latency)
         result_counts = [len(row) for row in results.values()]
         total_results = sum(result_counts)
         scores = [score for row in results.values() for score in row.values()]

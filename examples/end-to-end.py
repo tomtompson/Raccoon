@@ -20,15 +20,15 @@ OUTPUT_PATH_CHUNKS = Path("data/processed/symfony_chunks")
 
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
 
-QUERY_PROMPT_PATH = "prompts/example_symfony/query_scenarios/query_generation_lexical.txt"
+QUERY_PROMPT_PATH = "prompts/example_symfony/query_scenarios/query_generation_semantic.txt"
 QUERY_VALIDATION_PATH = "prompts/example_symfony/query_validation.txt"
 CANDIDATE_JUDGING_PATH = "prompts/example_symfony/candidate_judging.txt"
 DISTRIBUTION_VALIDATION_PATH = "prompts/example_symfony/distribution_validation.txt"
 
 
-OUTPUT_PATH_SYNTH = Path("data/processed/symfony/symphony_beir_lexical")
+OUTPUT_PATH_SYNTH = Path("data/processed/symfony/symfony_beir_semantic")
 
-RESULT_FILE_PATH = Path("data/processed/symfony/symphony_beir_lexical/eval_results.json")
+RESULT_FILE_PATH = Path("data/processed/symfony/symfony_beir_semantic/eval_results.json")
 
 
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
@@ -40,13 +40,13 @@ MAX_LENGTH = 512
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 QUERY_PROMPT_NAME = "query"
 PASSAGE_PROMPT_NAME = "document"
-ENCODE_PATH = Path("data/processed/symfony/symphony_beir_lexical/encode/")
-LINEAR_CACHE_PATH = Path("data/processed/symfony/symphony_beir_lexical/linear_rag_cache")
+ENCODE_PATH = Path("data/processed/symfony/symfony_beir_semantic/encode/")
+LINEAR_CACHE_PATH = Path("data/processed/symfony/symfony_beir_semantic/linear_rag_cache")
 
 RETRIEVERS = []
 
 
-PDF_PATH = Path("data/processed/symfony/report_lexical.pdf")
+PDF_PATH = Path("data/processed/symfony/report_semantic.pdf")
 
 
 def main() -> None:

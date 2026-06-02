@@ -15,13 +15,13 @@ import time
 import torch
 import json 
 import hashlib
-import logging
 import numpy as np
 import igraph as ig
 import re
+from raccoon.logging_utils import get_logger
 from .util.utils import (join_title_text, min_max_normalize, rrf_fuse)
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 class LinearRagRetriever(BaseRetriever):
