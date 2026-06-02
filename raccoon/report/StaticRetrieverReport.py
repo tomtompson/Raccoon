@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import logging
 from pathlib import Path
 from statistics import mean
 from typing import Any
@@ -16,10 +17,11 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Tabl
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.platypus.doctemplate import PageTemplate, Frame
 import platform
-import torch
 import psutil
 import os
 import random
+
+log = logging.getLogger(__name__)
 
 class StaticRetrieverReport:
     def __init__(self, language: str = "english") -> None:
@@ -76,7 +78,7 @@ class StaticRetrieverReport:
                 sample_chars=self._int(config.get("sample_text_chars", 220), 220),
             )
         )
-        print(f"Saved report to: {path}")
+        log.info("Saved report to: %s", path)
         return path
 
 
@@ -92,7 +94,7 @@ class StaticRetrieverReport:
         ds_description: str | None = None,
     ) -> list[Any]:
         story: list[Any] = []
-        logo = Path("raccoon/report/images/logo.png")
+        logo = Path(__file__).resolve().parent / "images" / "logo.png"
         if logo.exists():
             story += [Image(str(logo), width=50 * mm, height=50 * mm)]
 
@@ -392,6 +394,10 @@ class StaticRetrieverReport:
 
     def _machine_summary(self, styles: dict[str, Any]) -> list[Any]:
         ram_gb = round(psutil.virtual_memory().total / (1024 ** 3), 2)
+        try:
+            import torch
+        except ImportError:
+            torch = None
 
         rows = [
             ("System", platform.system()),
@@ -401,7 +407,9 @@ class StaticRetrieverReport:
             ("Python version", platform.python_version()),
         ]
 
-        if torch.cuda.is_available():
+        if torch is None:
+            rows.append(("CUDA", "Unknown (torch not installed)"))
+        elif torch.cuda.is_available():
             rows.extend([
                 ("CUDA", f"Available ({torch.cuda.device_count()} GPU(s))"),
                 ("GPU Name", torch.cuda.get_device_name(0)),
@@ -1121,7 +1129,7 @@ class StaticRetrieverReport:
         retrievers: list[Any],
         config: dict[str, Any],
     ) -> list[dict[str, Any]]:
-        target_docs = self._int(config.get("scalability_target_docs", 100_000_0), 100_000_0)
+        target_docs = self._int(config.get("scalability_target_docs", 1_000_000), 1_000_000)
         target_queries = self._int(config.get("scalability_target_queries", 100_000), 100_000)
 
         rows: list[dict[str, Any]] = []

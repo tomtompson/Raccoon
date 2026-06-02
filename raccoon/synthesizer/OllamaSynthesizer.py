@@ -14,7 +14,7 @@ from .helper.helper import (
     _extract_json_object,
     _safe_int,
 )
-import random as ramdom
+import random
 
 class OllamaSynthesizer(BaseSynthesizer):
     def __init__(
@@ -81,13 +81,15 @@ class OllamaSynthesizer(BaseSynthesizer):
         elif language.lower() in ("dutch", "nl", "nederlands"):
             language = "dutch"
             prompt_name = "description_generation_dutch"
+        else:
+            raise ValueError("language must be one of: english, en, dutch, nl, nederlands")
 
+        if prompt_name not in self.prompts:
+            prompt = self.load_prompt(f"prompts/description/{prompt_name}.txt")
+            self.prompts.update({prompt_name: prompt})
 
-        prompt = self.load_prompt(f"prompts/description/{prompt_name}.txt") 
-        self.prompts.update({prompt_name: prompt})
-
-        key_c, value_c = ramdom.choice(list(corpus.items()))
-        key_q, value_q = ramdom.choice(list(queries.items()))
+        key_c, value_c = random.choice(list(corpus.items()))
+        key_q, value_q = random.choice(list(queries.items()))
 
         prompt_query_generation = self.render_prompt(
             "query_generation",

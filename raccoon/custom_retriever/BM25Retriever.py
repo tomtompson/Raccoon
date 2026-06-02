@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from elastic_transport import ConnectionError as ElasticConnectionError
 from elasticsearch import ApiError, Elasticsearch
 
 from .BaseRetriever import BaseRetriever
-from raccoon.custom_retriever.util.Reranker import Reranker
+
+if TYPE_CHECKING:
+    from raccoon.custom_retriever.util.Reranker import Reranker
+
+log = logging.getLogger(__name__)
 
 
 class BM25Retriever(BaseRetriever):
@@ -133,16 +138,15 @@ class BM25Retriever(BaseRetriever):
 
         try:
             stats = self.client.indices.stats(index=self.index_name)
-            print(stats)
+            log.debug("Elasticsearch index stats for %s: %s", self.index_name, stats)
             storage_size_bytes = (
                 stats["indices"][self.index_name]["total"]["store"]["size_in_bytes"]
             )
 
             storage_size_mb = storage_size_bytes / (1024 * 1024)
 
-        except Exception:
-            print(ElasticConnectionError(f"Unable to retrieve index stats for {self.index_name} at {self.elasticsearch_url}"))
-            pass
+        except Exception as exc:
+            log.warning("Unable to retrieve index stats for %s at %s: %s", self.index_name, self.elasticsearch_url, exc)
 
 
         self.metrics["index_time"] = {

@@ -41,66 +41,41 @@ from .helper.helper import (
     _build_faiss_index)
 
 from .helper.SimpleBM25 import SimpleBM25
+from .config import SynthesisConfig
 
 import logging
-from rich.logging import RichHandler
-from rich.console import Console
-from rich.theme import Theme
 from rich.progress import Progress
-
-# =========================
-# Helpers LOgging
-# =========================
-console = Console(theme=Theme({"logging.level.query": "green",
-                               "logging.level.judge": "orange1",
-                               "logging.level.start": "cyan3",
-                               "logging.level.end": "bright_magenta",
-                               "logging.level.rerank": "sky_blue2"}))
-                               
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(rich_tracebacks=True, markup=True, console=console)]
-)
 
 QUERY_LEVEL = 25
 logging.addLevelName(QUERY_LEVEL, "QUERY")
-def query(self, message, *args, **kwargs):
-    if self.isEnabledFor(QUERY_LEVEL):
-        self._log(QUERY_LEVEL, message, args, **kwargs)
-        
 JUDGE_LEVEL = 26
 logging.addLevelName(JUDGE_LEVEL, "JUDGE")
-def judge(self, message, *args, **kwargs):
-    if self.isEnabledFor(JUDGE_LEVEL):
-        self._log(JUDGE_LEVEL, message, args, **kwargs)
-
 START_LEVEL = 27
 logging.addLevelName(START_LEVEL, "START")
-def start(self, message, *args, **kwargs):
-    if self.isEnabledFor(START_LEVEL):
-        self._log(START_LEVEL, message, args, **kwargs)
-
 END_LEVEL = 28
 logging.addLevelName(END_LEVEL, "END")
-def end(self, message, *args, **kwargs):
-    if self.isEnabledFor(END_LEVEL):
-        self._log(END_LEVEL, message, args, **kwargs)
-
 RERANK_LEVEL = 29
 logging.addLevelName(RERANK_LEVEL, "RERANK")
-def rerank(self, message, *args, **kwargs):
-    if self.isEnabledFor(RERANK_LEVEL):
-        self._log(RERANK_LEVEL, message, args, **kwargs)
 
 
-logging.Logger.query = query
-logging.Logger.judge = judge
-logging.Logger.start = start
-logging.Logger.end = end
-logging.Logger.rerank = rerank
-log = logging.getLogger(__name__)
+class RaccoonLogger(logging.LoggerAdapter):
+    def query(self, message, *args, **kwargs):
+        self.log(QUERY_LEVEL, message, *args, **kwargs)
+
+    def judge(self, message, *args, **kwargs):
+        self.log(JUDGE_LEVEL, message, *args, **kwargs)
+
+    def start(self, message, *args, **kwargs):
+        self.log(START_LEVEL, message, *args, **kwargs)
+
+    def end(self, message, *args, **kwargs):
+        self.log(END_LEVEL, message, *args, **kwargs)
+
+    def rerank(self, message, *args, **kwargs):
+        self.log(RERANK_LEVEL, message, *args, **kwargs)
+
+
+log = RaccoonLogger(logging.getLogger(__name__), {})
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -125,7 +100,7 @@ class BaseSynthesizer(ABC):
         pass
 
     @abstractmethod
-    def generate_description_of_ds(self, text: str, model: str, language: str, corpus: Dict, queries: Dict, description_length: int = 100) -> str:
+    def generate_description_of_ds(self, model: str, language: str, corpus: Dict, queries: Dict, description_length: int = 100) -> str:
         pass    
 
     def _pool_candidates_realistic(
@@ -444,15 +419,87 @@ class BaseSynthesizer(ABC):
         return left + right
 
 
-    def synthesize_beir(self, parent_chunks : list, child_chunks : list, output_dir : str, embedding_id : str, embedding_kwargs : dict, 
-                        query_model : str, query_validation_model : str, judge_model : str,
-                        qrel_validation_model: str, queries_per_parent_to_generate : int, max_queries_to_keep_per_parent: int,
-                        dense_k : int, bm25_k : int, rrf_top_k : int, same_topic_negative_k : int, 
-                        random_negative_k : int, min_score_to_keep_in_qrels : int, max_qrels_per_query : int,
-                        include_source_parent_children : bool, parent_text_limit_prompt : int, candidate_text_limit_prompt : int, max_estimated_tokens : int,
-                        overwrite_corpus : int, max_parents : int, random_seed : int, target_queries_per_source: int,
-                        shuffle_parents : bool, reranker_id : str, rerank_pool_size : int, rerank_keep_top_k : int,
-                        allow_copy_like_queries: bool = False, min_query_tokens: int = 3, max_query_tokens: int = 20, ):
+    def synthesize_beir(
+                        self, parent_chunks: list, child_chunks: list, output_dir: str | None = None, embedding_id: str | None = None,
+                        embedding_kwargs: dict | None = None, query_model: str | None = None, query_validation_model: str | None = None,
+                        judge_model: str | None = None, qrel_validation_model: str | None = None,
+                        queries_per_parent_to_generate: int | None = None, max_queries_to_keep_per_parent: int | None = None,
+                        dense_k: int | None = None, bm25_k: int | None = None, rrf_top_k: int | None = None,
+                        same_topic_negative_k: int | None = None, random_negative_k: int | None = None,
+                        min_score_to_keep_in_qrels: int | None = None, max_qrels_per_query: int | None = None,
+                        include_source_parent_children: bool | None = None, parent_text_limit_prompt: int | None = None,
+                        candidate_text_limit_prompt: int | None = None, max_estimated_tokens: int | None = None,
+                        overwrite_corpus: bool | None = None, max_parents: int | None = None, random_seed: int | None = None,
+                        target_queries_per_source: int | None = None, shuffle_parents: bool | None = None,
+                        reranker_id: str | None = None, rerank_pool_size: int | None = None, rerank_keep_top_k: int | None = None,
+                        allow_copy_like_queries: bool | None = None, min_query_tokens: int | None = None,
+                        max_query_tokens: int | None = None, config: SynthesisConfig | dict[str, Any] | None = None, ):
+        cfg = SynthesisConfig.from_inputs(
+            config=config,
+            output_dir=output_dir,
+            embedding_id=embedding_id,
+            embedding_kwargs=embedding_kwargs,
+            query_model=query_model,
+            query_validation_model=query_validation_model,
+            judge_model=judge_model,
+            qrel_validation_model=qrel_validation_model,
+            queries_per_parent_to_generate=queries_per_parent_to_generate,
+            max_queries_to_keep_per_parent=max_queries_to_keep_per_parent,
+            dense_k=dense_k,
+            bm25_k=bm25_k,
+            rrf_top_k=rrf_top_k,
+            same_topic_negative_k=same_topic_negative_k,
+            random_negative_k=random_negative_k,
+            min_score_to_keep_in_qrels=min_score_to_keep_in_qrels,
+            max_qrels_per_query=max_qrels_per_query,
+            include_source_parent_children=include_source_parent_children,
+            parent_text_limit_prompt=parent_text_limit_prompt,
+            candidate_text_limit_prompt=candidate_text_limit_prompt,
+            max_estimated_tokens=max_estimated_tokens,
+            overwrite_corpus=overwrite_corpus,
+            max_parents=max_parents,
+            random_seed=random_seed,
+            target_queries_per_source=target_queries_per_source,
+            shuffle_parents=shuffle_parents,
+            reranker_id=reranker_id,
+            rerank_pool_size=rerank_pool_size,
+            rerank_keep_top_k=rerank_keep_top_k,
+            allow_copy_like_queries=allow_copy_like_queries,
+            min_query_tokens=min_query_tokens,
+            max_query_tokens=max_query_tokens,
+        )
+
+        output_dir = cfg.output_dir
+        embedding_id = cfg.embedding_id
+        embedding_kwargs = cfg.embedding_kwargs or {}
+        query_model = cfg.query_model
+        query_validation_model = cfg.query_validation_model
+        judge_model = cfg.judge_model
+        qrel_validation_model = cfg.qrel_validation_model
+        queries_per_parent_to_generate = cfg.queries_per_parent_to_generate
+        max_queries_to_keep_per_parent = cfg.max_queries_to_keep_per_parent
+        dense_k = cfg.dense_k
+        bm25_k = cfg.bm25_k
+        rrf_top_k = cfg.rrf_top_k
+        same_topic_negative_k = cfg.same_topic_negative_k
+        random_negative_k = cfg.random_negative_k
+        min_score_to_keep_in_qrels = cfg.min_score_to_keep_in_qrels
+        max_qrels_per_query = cfg.max_qrels_per_query
+        include_source_parent_children = cfg.include_source_parent_children
+        parent_text_limit_prompt = cfg.parent_text_limit_prompt
+        candidate_text_limit_prompt = cfg.candidate_text_limit_prompt
+        max_estimated_tokens = cfg.max_estimated_tokens
+        overwrite_corpus = cfg.overwrite_corpus
+        max_parents = cfg.max_parents
+        random_seed = cfg.random_seed
+        target_queries_per_source = cfg.target_queries_per_source
+        shuffle_parents = cfg.shuffle_parents
+        reranker_id = cfg.reranker_id
+        rerank_pool_size = cfg.rerank_pool_size
+        rerank_keep_top_k = cfg.rerank_keep_top_k
+        allow_copy_like_queries = cfg.allow_copy_like_queries
+        min_query_tokens = cfg.min_query_tokens
+        max_query_tokens = cfg.max_query_tokens
         
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -639,11 +686,12 @@ class BaseSynthesizer(ABC):
                     if qv.get("unsupported_by_text", False):
                         reasons.append("unsupported_by_text")
 
+                    explanation = qv.get("explanation", "None")
                     if reasons:
-                        log.query(f"[red]Rejected[/red] | reasons={reasons} | explanation={qv.get("explanation","None")}")
+                        log.query(f"[red]Rejected[/red] | reasons={reasons} | explanation={explanation}")
                         continue
                     else:
-                        log.query(f"[green]Query passed validaiton explenation : [/green]{qv.get("explanation","None")}")
+                        log.query(f"[green]Query passed validaiton explenation : [/green]{explanation}")
 
                     log.judge(f"Creating candidate pooling for query : {query}")
                     pooled_candidates, pooled_negatives  = self._pool_candidates_realistic(
@@ -850,7 +898,7 @@ class BaseSynthesizer(ABC):
         log.end(f"Skipped already processed parents: {skipped_count}")
         log.end("Saved queries per source:")
         for source, count in sorted(saved_queries_by_source.items()):
-            print(f"  {source}: {count}")
+            log.end("  %s: %s", source, count)
 
     # =========================
     # Load Chunks

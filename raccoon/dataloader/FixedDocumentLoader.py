@@ -1,19 +1,15 @@
-import os
 from pathlib import Path
-from typing import Iterable
 
 from .BaseLoader import BaseLoader
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
 from langchain_community.document_loaders import (
     DirectoryLoader,
     PyPDFLoader,
     Docx2txtLoader,
-    TextLoader, 
-    UnstructuredMarkdownLoader
-    )
+    TextLoader,
+)
 
 
 
