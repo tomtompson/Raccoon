@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from raccoon.types import Corpus, Metrics, Queries, Results
 
 if TYPE_CHECKING:
-    from raccoon.custom_retriever.util.Reranker import Reranker
+    from raccoon.custom_retriever.reranker.BaseReranker import BaseReranker
 
 
 class BaseRetriever(ABC):
@@ -17,7 +17,7 @@ class BaseRetriever(ABC):
         config: dict[str, Any] | None = None,
         corpus: Corpus | None = None,
         queries: Queries | None = None,
-        reranker: Reranker | None = None,
+        reranker: BaseReranker | None = None,
     ) -> None:
         self.config = config or {}
         self.corpus = corpus
@@ -61,7 +61,7 @@ class BaseRetriever(ABC):
         if self.reranker is None:
             return {}
 
-        self.rerank_results, self.rerank_metrics = self.reranker.rerank_with_transformers(
+        self.rerank_results, self.rerank_metrics = self.reranker.rerank(
             self.corpus,
             self.queries,
             self.results,

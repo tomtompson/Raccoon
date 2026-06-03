@@ -13,7 +13,7 @@ from sentence_transformers import SentenceTransformer
 from raccoon.logging_utils import get_logger
 
 from .BaseRetriever import BaseRetriever
-from raccoon.custom_retriever.util.Reranker import Reranker
+from raccoon.custom_retriever.reranker.BaseReranker import BaseReranker
 from .util.utils import pickle_load, save_embeddings
 
 log = get_logger(__name__)
@@ -27,7 +27,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
         config: dict[str, Any] | None = None,
         corpus: dict[str, dict[str, Any]] | None = None,
         queries: dict[str, str] | None = None,
-        reranker: Reranker | None = None,
+        reranker: BaseReranker | None = None,
         model_id: str | None = None,
         max_length: int | None = None,
         device: str | None = None,

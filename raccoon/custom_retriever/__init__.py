@@ -4,7 +4,7 @@ __all__ = [
     "DenseRetrieverSentenceBert",
     "LinearRagRetriever",
     "HybridRetriever",
-]
+    "ColBERTRetriever",]
 
 _EXPORTS = {
     "BaseRetriever": ".BaseRetriever",
@@ -12,6 +12,7 @@ _EXPORTS = {
     "DenseRetrieverSentenceBert": ".DenseRetriever",
     "HybridRetriever": ".HybridRetriever",
     "LinearRagRetriever": ".LinearRagRetriever",
+    "ColBERTRetriever": ".ColBERTRetriever",
 }
 
 

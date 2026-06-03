@@ -10,7 +10,7 @@ from pathlib import Path
 from raccoon.dataloader.utils import load_local_beir_dataset
 from raccoon.custom_retriever.BM25Retriever import BM25Retriever
 from raccoon.custom_retriever.util.utils import append_results
-from raccoon.custom_retriever.util.Reranker import Reranker 
+from raccoon.custom_retriever.util.CrossEncoderReranker import CrossEncoderReranker 
 
 from testcontainers.elasticsearch import ElasticSearchContainer
 from beir.retrieval.evaluation import EvaluateRetrieval

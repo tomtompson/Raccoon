@@ -7,11 +7,12 @@ import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from raccoon.logging_utils import get_logger
+from .BaseReranker import BaseReranker
 
 log = get_logger(__name__)
 
 
-class Reranker:
+class CrossEncoderReranker(BaseReranker):
     def __init__(
         self,
         model_id: str,
@@ -35,10 +36,10 @@ class Reranker:
             self.batch_size,
             self.max_length,
         )
-        self._load_reranker()
+        self._load_model()
         self.rerank_retrieval_metrics = {}
 
-    def _load_reranker(self) -> None:
+    def _load_model(self) -> None:
         load_start = time.perf_counter()
         log.info("Loading reranker tokenizer: %s", self.model_id)
         tokenizer = AutoTokenizer.from_pretrained(self.model_id, trust_remote_code=True)
@@ -61,7 +62,7 @@ class Reranker:
         log.info("Loaded reranker model in %.2fs", time.perf_counter() - load_start)
 
 
-    def rerank_with_transformers(self, corpus, queries, results):
+    def rerank(self, corpus, queries, results):
         rerank_results = {}
         query_ids = list(results.keys())
         log.info(

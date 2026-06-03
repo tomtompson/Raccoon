@@ -1,5 +1,5 @@
 from .BaseRetriever import BaseRetriever
-from raccoon.custom_retriever.util.Reranker import Reranker
+from raccoon.custom_retriever.reranker.BaseReranker import BaseReranker
 from typing import Any, Dict, Set, List, Optional, Tuple
 from raccoon.custom_retriever.util.SimpleBM25 import SimpleBM25
 from raccoon.custom_retriever.util.InMemoryEmbeddingStore import EmbeddingStore
@@ -32,7 +32,7 @@ class LinearRagRetriever(BaseRetriever):
         config: Dict[str, Any] | None = None,
         corpus: Dict | None = None,
         queries: Dict | None = None,
-        reranker: Reranker | None = None
+        reranker: BaseReranker | None = None
     ) -> None:
         self.config = config or {}
         self.corpus = corpus

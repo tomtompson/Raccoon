@@ -1,11 +1,13 @@
 __all__ = [
-    "EmbeddingStore",
-    "SimpleBM25",
+    "BaseReranker",
+    "CrossEncoderReranker",
+    "ColBertReranker",
 ]
 
 _EXPORTS = {
-    "EmbeddingStore": ".InMemoryEmbeddingStore",
-    "SimpleBM25": ".SimpleBM25",
+    "BaseReranker": ".BaseReranker",
+    "CrossEncoderReranker": ".CrossEncoderReranker",
+    "ColBertReranker": ".ColBertReranker",
 }
 
 

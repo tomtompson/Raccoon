@@ -13,7 +13,7 @@ from raccoon.logging_utils import get_logger
 from .BaseRetriever import BaseRetriever
 
 if TYPE_CHECKING:
-    from raccoon.custom_retriever.util.Reranker import Reranker
+    from raccoon.custom_retriever.reranker.BaseReranker import BaseReranker
 
 log = get_logger(__name__)
 
@@ -29,7 +29,7 @@ class BM25Retriever(BaseRetriever):
         config: dict[str, Any] | None = None,
         corpus: dict | None = None,
         queries: dict | None = None,
-        reranker: Reranker | None = None,
+        reranker: BaseReranker | None = None,
         content_field: str = "content",
         metadata_field: str = "metadata",
         topk: int = 20,
