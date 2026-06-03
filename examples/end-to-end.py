@@ -7,28 +7,30 @@ from raccoon.synthesizer import OllamaSynthesizer
 from pathlib import Path
 from raccoon.dataloader.utils import load_local_beir_dataset
 from raccoon.custom_retriever.BM25Retriever import BM25Retriever
+from raccoon.custom_retriever.SpladeRetriever import SpladeRetriever
 from raccoon.custom_retriever.util.utils import append_results
-from raccoon.custom_retriever.util.CrossEncoderReranker import CrossEncoderReranker 
+from raccoon.custom_retriever.reranker.CrossEncoderReranker import CrossEncoderReranker 
 
 from testcontainers.elasticsearch import ElasticSearchContainer
 from beir.retrieval.evaluation import EvaluateRetrieval
 import torch
 
 
-SOURCE_PATH_RAW = Path("data/raw/symfony")
-OUTPUT_PATH_CHUNKS = Path("data/processed/symfony_chunks")
+SOURCE_PATH_RAW = Path("data/raw/rechtspraken")
+OUTPUT_PATH_CHUNKS = Path("data/processed/rechtspraken_chunks")
 
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
+SPLADE_MODEL_NAME = "sparse-encoder/splade-robbert-dutch-base-v1"
 
-QUERY_PROMPT_PATH = "prompts/example_symfony/query_scenarios/query_generation_semantic.txt"
-QUERY_VALIDATION_PATH = "prompts/example_symfony/query_validation.txt"
-CANDIDATE_JUDGING_PATH = "prompts/example_symfony/candidate_judging.txt"
-DISTRIBUTION_VALIDATION_PATH = "prompts/example_symfony/distribution_validation.txt"
+QUERY_PROMPT_PATH = "prompts/example_rechtspraak/query_scenarios/query_generation_long_form.txt"
+QUERY_VALIDATION_PATH = "prompts/example_rechtspraak/query_validation.txt"
+CANDIDATE_JUDGING_PATH = "prompts/example_rechtspraak/candidate_judging.txt"
+DISTRIBUTION_VALIDATION_PATH = "prompts/example_rechtspraak/distribution_validation.txt"
 
 
-OUTPUT_PATH_SYNTH = Path("data/processed/symfony/symfony_beir_semantic")
+OUTPUT_PATH_SYNTH = Path("data/processed/rechtspraken/rechtspraken_beir_long_form")
 
-RESULT_FILE_PATH = Path("data/processed/symfony/symfony_beir_semantic/eval_results.json")
+RESULT_FILE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_long_form/eval_results.json")
 
 
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
@@ -40,13 +42,13 @@ MAX_LENGTH = 512
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 QUERY_PROMPT_NAME = "query"
 PASSAGE_PROMPT_NAME = "document"
-ENCODE_PATH = Path("data/processed/symfony/symfony_beir_semantic/encode/")
-LINEAR_CACHE_PATH = Path("data/processed/symfony/symfony_beir_semantic/linear_rag_cache")
+ENCODE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_long_form/encode/")
+LINEAR_CACHE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_long_form/linear_rag_cache")
 
 RETRIEVERS = []
 
 
-PDF_PATH = Path("data/processed/symfony/report_semantic.pdf")
+PDF_PATH = Path("data/processed/rechtspraken/report_long_form.pdf")
 
 
 def main() -> None:
@@ -174,6 +176,48 @@ def main() -> None:
         )
 
         RETRIEVERS.append(retriever_bm25)
+
+        #======================================================
+        # sPLADE and evaluation
+        #======================================================
+
+        retriever_splade = SpladeRetriever(
+            elasticsearch_url=elasticsearch_url,
+            language="dutch",
+            index_name="raccoon-splade-test",
+            model_name=SPLADE_MODEL_NAME,
+            corpus=corpus,
+            queries=queries,
+            topk=TOP_K,
+            reranker=reranker,
+            batch_size=8,
+            max_length=MAX_LENGTH,
+            max_features=1024,
+        )
+
+        retriever_splade.index_corpus()
+        retriever_splade.search()
+
+        eval = EvaluateRetrieval()
+        eval_results = eval.evaluate(
+            qrels=qrels,
+            results=retriever_splade.results,
+            k_values=[1, 3, 5, 10, 20],
+        )
+        retriever_splade.add_retrieval_result(eval_results)
+        eval_results = eval.evaluate(qrels=qrels, results=retriever_splade.rerank_results, k_values=[1, 3, 5, 10, 20],)
+        retriever_splade.add_rerank_retrieval_result(eval_results)
+        append_results(
+        RESULT_FILE_PATH,
+        retriever_splade.retriever_type,
+        retriever_splade.retrieval_metrics,
+        retriever_splade.metrics,
+        {
+            "rerank_time": retriever_splade.rerank_metrics,
+        },
+        )
+
+        RETRIEVERS.append(retriever_splade)
     #======================================================
     # Dense Retrieval and evaluation
     #======================================================

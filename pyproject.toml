@@ -43,6 +43,7 @@ linear = [
 report = [
     "psutil>=7.2.2",
     "reportlab>=4.5.1",
+    "cairocffi>=1.7.1",
 ]
 rerank = [
     "torch>=2.10.0",
@@ -88,6 +89,7 @@ workflow = [
     "torch>=2.10.0",
     "tqdm>=4.67.3",
     "transformers>=5.3.0",
+    "cairocffi>=1.7.1",
 ]
 
 [[tool.setuptools.packages.find]]
