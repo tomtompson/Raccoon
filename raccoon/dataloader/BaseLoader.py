@@ -5,13 +5,10 @@ from abc import ABC, abstractmethod
 
 import json
 
-from typing import Iterable
 from pathlib import Path
 import uuid
 
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_experimental.text_splitter import SemanticChunker
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters.character import RecursiveCharacterTextSplitter
 
 class BaseLoader(ABC):
     def __init__(self, config: dict | None = None):
@@ -97,8 +94,11 @@ class BaseLoader(ABC):
 
         for parent_doc in parent_docs:
             parent_id = str(uuid.uuid4())
+            parent_metadata = dict(parent_doc.metadata)
+            if "id" in parent_metadata and "source_id" not in parent_metadata:
+                parent_metadata["source_id"] = parent_metadata["id"]
             parent_doc.metadata = {
-                **parent_doc.metadata,
+                **parent_metadata,
                 "id": parent_id,
                 "doc_type": "parent",
             }

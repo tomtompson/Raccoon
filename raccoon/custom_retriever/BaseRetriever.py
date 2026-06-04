@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from abc import ABC, abstractmethod
-from pathlib import Path
-from statistics import mean
-from time import perf_counter, time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from raccoon.custom_retriever.util.Reranker import Reranker
+from raccoon.types import Corpus, Metrics, Queries, Results
 
-
+if TYPE_CHECKING:
+    from raccoon.custom_retriever.reranker.BaseReranker import BaseReranker
 
 
 class BaseRetriever(ABC):
@@ -19,39 +15,36 @@ class BaseRetriever(ABC):
     def __init__(
         self,
         config: dict[str, Any] | None = None,
-        corpus: dict | None = None,
-        queries: dict | None = None,
-        reranker: Reranker | None = None
+        corpus: Corpus | None = None,
+        queries: Queries | None = None,
+        reranker: BaseReranker | None = None,
     ) -> None:
         self.config = config or {}
         self.corpus = corpus
         self.queries = queries
         self.processed_documents: list = []
-        self.results: list[dict[str, Any]] = []
+        self.results: Results = {}
         self.is_ready = False
         self.reranker = reranker
-        self.metrics = {}
-        self.retrieval_metrics = {
+        self.metrics: Metrics = {}
+        self.retrieval_metrics: Metrics = {
             self.retriever_type: {},
             "rerank": {}
         }
-        self.rerank_results = {}
-        self.rerank_metrics = {}
+        self.rerank_results: Results = {}
+        self.rerank_metrics: Metrics = {}
 
-    @abstractmethod
     def create_index(self, *args, **kwargs) -> None:
-        pass
+        raise NotImplementedError(f"{type(self).__name__} does not support create_index().")
 
-    @abstractmethod
     def index_corpus(self, *args, **kwargs) -> None:
-        pass
+        raise NotImplementedError(f"{type(self).__name__} does not support index_corpus().")
 
-    @abstractmethod
     def encode(self, *args, **kwargs):
-        pass
+        raise NotImplementedError(f"{type(self).__name__} does not support encode().")
 
     @abstractmethod
-    def search(self, top_k: int, *args, **kwargs) -> dict:
+    def search(self, top_k: int | None = None, *args, **kwargs) -> Results:
         pass
 
     def add_retrieval_result(self, result: tuple[dict[str, Any]]) -> None:
@@ -68,7 +61,7 @@ class BaseRetriever(ABC):
         if self.reranker is None:
             return {}
 
-        self.rerank_results, self.rerank_metrics = self.reranker.rerank_with_transformers(
+        self.rerank_results, self.rerank_metrics = self.reranker.rerank(
             self.corpus,
             self.queries,
             self.results,

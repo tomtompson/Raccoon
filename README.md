@@ -24,21 +24,40 @@ product. Runnable workflows live in `examples/`; pytest tests live in `test/`.
 
 Raccoon supports Python `>=3.10,<3.13`.
 
-Using `uv`:
+The base install is intentionally small. Install extras for the workflow you want to
+run.
+
+Using `uv` for development:
 
 ```bash
-uv sync
+uv sync --extra workflow --extra dev
 ```
 
-Using `pip`:
+Using `pip` for the full practical workflow:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -e ".[workflow,dev]"
 ```
 
-GPU/CUDA support is optional:
+For a smaller install, pick only the extras you need:
+
+| Extra | Use when you need |
+| --- | --- |
+| `dataloader` | Local file loading and chunking. |
+| `sql` | SQL table loading. |
+| `synthesis` | Synthetic BEIR dataset generation. |
+| `bm25` | Elasticsearch BM25 retrieval. |
+| `dense` | SentenceTransformer dense retrieval. |
+| `linear` | LinearRAG retrieval. |
+| `rerank` | Transformer reranking. |
+| `report` | Static PDF report generation. |
+| `evaluation` | BEIR evaluation and dataset helpers. |
+| `workflow` | The repo's practical end-to-end examples. |
+| `dev` | Tests and linting. |
+
+GPU/CUDA support is optional and separate:
 
 ```bash
 pip install -e ".[gpu]"
@@ -59,8 +78,8 @@ Different workflows need different services and models:
   `testcontainers`, or you can pass an external Elasticsearch URL where supported.
 - Dataset synthesis needs Ollama running locally, usually at `http://localhost:11434`,
   with the configured models pulled, for example `ollama pull qwen3:8b`.
-- Dense retrieval and reranking download Hugging Face model.
-- LinearRAG uses spaCy. 
+- Dense retrieval and reranking download Hugging Face models.
+- LinearRAG uses spaCy.
 - SQL loading needs a database connection string, for example through
   `RACCOON_SQL_URL`.
 

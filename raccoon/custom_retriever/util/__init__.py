@@ -1,9 +1,20 @@
-from .InMemoryEmbeddingStore import EmbeddingStore
-from .Reranker import Reranker
-from .SimpleBM25 import SimpleBM25
-
 __all__ = [
     "EmbeddingStore",
-    "Reranker",
     "SimpleBM25",
 ]
+
+_EXPORTS = {
+    "EmbeddingStore": ".InMemoryEmbeddingStore",
+    "SimpleBM25": ".SimpleBM25",
+}
+
+
+def __getattr__(name):
+    if name not in _EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    from importlib import import_module
+
+    module = import_module(_EXPORTS[name], __name__)
+    value = getattr(module, name)
+    globals()[name] = value
+    return value

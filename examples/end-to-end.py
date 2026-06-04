@@ -7,33 +7,30 @@ from raccoon.synthesizer import OllamaSynthesizer
 from pathlib import Path
 from raccoon.dataloader.utils import load_local_beir_dataset
 from raccoon.custom_retriever.BM25Retriever import BM25Retriever
+from raccoon.custom_retriever.SpladeRetriever import SpladeRetriever
 from raccoon.custom_retriever.util.utils import append_results
-from raccoon.custom_retriever.util.Reranker import Reranker 
+from raccoon.custom_retriever.reranker.CrossEncoderReranker import CrossEncoderReranker 
 
 from testcontainers.elasticsearch import ElasticSearchContainer
 from beir.retrieval.evaluation import EvaluateRetrieval
 import torch
 
 
-SOURCE_PATH_RAW = Path("data/raw/symfony")
-OUTPUT_PATH_CHUNKS = Path("data/processed/symfony_chunks")
+SOURCE_PATH_RAW = Path("data/raw/rechtspraken")
+OUTPUT_PATH_CHUNKS = Path("data/processed/rechtspraken_chunks")
 
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
+SPLADE_MODEL_NAME = "sparse-encoder/splade-robbert-dutch-base-v1"
 
-<<<<<<< HEAD:examples/end-to-end.py
-QUERY_PROMPT_PATH = "prompts/example_rechtspraak/query_scenarios/query_generation_long_form.txt"
-OUTPUT_PATH_SYNTH = "data/processed/rechtspraken/beir_600_semantic"
-=======
-QUERY_PROMPT_PATH = "prompts/example_symfony/query_scenarios/query_generation_lexical.txt"
-QUERY_VALIDATION_PATH = "prompts/example_symfony/query_validation.txt"
-CANDIDATE_JUDGING_PATH = "prompts/example_symfony/candidate_judging.txt"
-DISTRIBUTION_VALIDATION_PATH = "prompts/example_symfony/distribution_validation.txt"
->>>>>>> origin/main:test/end-to-end.py
+QUERY_PROMPT_PATH = "prompts/example_rechtspraak/query_scenarios/query_generation_ambiguous.txt"
+QUERY_VALIDATION_PATH = "prompts/example_rechtspraak/query_validation.txt"
+CANDIDATE_JUDGING_PATH = "prompts/example_rechtspraak/candidate_judging.txt"
+DISTRIBUTION_VALIDATION_PATH = "prompts/example_rechtspraak/distribution_validation.txt"
 
 
-OUTPUT_PATH_SYNTH = Path("data/processed/symfony/symphony_beir_lexical")
+OUTPUT_PATH_SYNTH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous")
 
-RESULT_FILE_PATH = Path("data/processed/symfony/symphony_beir_lexical/eval_results.json")
+RESULT_FILE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous/eval_results.json")
 
 
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
@@ -45,13 +42,13 @@ MAX_LENGTH = 512
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 QUERY_PROMPT_NAME = "query"
 PASSAGE_PROMPT_NAME = "document"
-ENCODE_PATH = Path("data/processed/symfony/symphony_beir_lexical/encode/")
-LINEAR_CACHE_PATH = Path("data/processed/symfony/symphony_beir_lexical/linear_rag_cache")
+ENCODE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous/encode/")
+LINEAR_CACHE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous/linear_rag_cache")
 
 RETRIEVERS = []
 
 
-PDF_PATH = Path("data/processed/symfony/report_lexical.pdf")
+PDF_PATH = Path("data/processed/rechtspraken/report_ambiguous.pdf")
 
 
 def main() -> None:
@@ -124,7 +121,7 @@ def main() -> None:
     #======================================================
     # Initialize Reranker
     #======================================================
-    reranker = Reranker(
+    reranker = CrossEncoderReranker(
         model_id=RERANKER_ID,
         top_k=TOP_K,
         batch_size=16,
@@ -179,6 +176,48 @@ def main() -> None:
         )
 
         RETRIEVERS.append(retriever_bm25)
+
+        #======================================================
+        # sPLADE and evaluation
+        #======================================================
+
+        retriever_splade = SpladeRetriever(
+            elasticsearch_url=elasticsearch_url,
+            language="dutch",
+            index_name="raccoon-splade-test",
+            model_name=SPLADE_MODEL_NAME,
+            corpus=corpus,
+            queries=queries,
+            topk=TOP_K,
+            reranker=reranker,
+            batch_size=8,
+            max_length=MAX_LENGTH,
+            max_features=1024,
+        )
+
+        retriever_splade.index_corpus()
+        retriever_splade.search()
+
+        eval = EvaluateRetrieval()
+        eval_results = eval.evaluate(
+            qrels=qrels,
+            results=retriever_splade.results,
+            k_values=[1, 3, 5, 10, 20],
+        )
+        retriever_splade.add_retrieval_result(eval_results)
+        eval_results = eval.evaluate(qrels=qrels, results=retriever_splade.rerank_results, k_values=[1, 3, 5, 10, 20],)
+        retriever_splade.add_rerank_retrieval_result(eval_results)
+        append_results(
+        RESULT_FILE_PATH,
+        retriever_splade.retriever_type,
+        retriever_splade.retrieval_metrics,
+        retriever_splade.metrics,
+        {
+            "rerank_time": retriever_splade.rerank_metrics,
+        },
+        )
+
+        RETRIEVERS.append(retriever_splade)
     #======================================================
     # Dense Retrieval and evaluation
     #======================================================
@@ -253,11 +292,7 @@ def main() -> None:
     "embedding_model_name": "snowflake/snowflake-arctic-embed-l-v2.0",
     "spacy_model_name": "nl_core_news_sm",
     "dataset_name": name,
-<<<<<<< HEAD:examples/end-to-end.py
-    "cache_path": "data/processed/rechtspraken/beir_600_semantic/linear_rag_cache",
-=======
     "cache_path": LINEAR_CACHE_PATH,
->>>>>>> origin/main:test/end-to-end.py
 
     "device": DEVICE,
     "max_seq_length": MAX_LENGTH,

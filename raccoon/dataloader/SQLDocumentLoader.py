@@ -1,15 +1,17 @@
+import re
 from typing import List, Optional
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters.character import RecursiveCharacterTextSplitter
 
 from .BaseLoader import BaseLoader
 
 
 class SQLDocumentLoader(BaseLoader):
+    _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$")
 
     def __init__(
         self,
@@ -18,6 +20,7 @@ class SQLDocumentLoader(BaseLoader):
         content_columns: List[str],
         metadata_columns: Optional[List[str]] = None,
         where: Optional[str] = None,
+        where_params: Optional[dict] = None,
         chunk_size: int = 2000,
         chunk_overlap: int = 200,
         separators: Optional[List[str]] = None,
@@ -25,10 +28,13 @@ class SQLDocumentLoader(BaseLoader):
         super().__init__()
 
         self.connection_string = connection_string
-        self.table = table
+        self.table = self._validate_identifier(table, "table")
         self.content_columns = content_columns
         self.metadata_columns = metadata_columns or []
+        self._validate_identifiers(self.content_columns, "content_columns")
+        self._validate_identifiers(self.metadata_columns, "metadata_columns")
         self.where = where
+        self.where_params = where_params or {}
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.parent_data: List[Document] | None = None
@@ -57,7 +63,7 @@ class SQLDocumentLoader(BaseLoader):
 
         with self.engine.connect() as conn:
 
-            result = conn.execute(text(query))
+            result = conn.execute(text(query), self.where_params)
 
             for row in result:
                 row_dict = dict(row._mapping)
@@ -83,8 +89,22 @@ class SQLDocumentLoader(BaseLoader):
 
         return documents
 
-    def preprocess_data(self, data: List[Document]) -> List[Document]:
+    def preprocess_data(self, data: List[Document]) -> tuple[List[Document], List[Document]]:
         parent_docs , child_docs = self.chunk(data, self.chunk_size, self.chunk_overlap)
         self.child_data = child_docs
         self.parent_data = parent_docs
         return parent_docs, child_docs
+
+    @classmethod
+    def _validate_identifier(cls, value: str, label: str) -> str:
+        if not cls._IDENTIFIER_RE.fullmatch(value):
+            raise ValueError(
+                f"Invalid SQL identifier for {label}: {value!r}. "
+                "Use simple table/column names and pass values through where_params."
+            )
+        return value
+
+    @classmethod
+    def _validate_identifiers(cls, values: List[str], label: str) -> None:
+        for value in values:
+            cls._validate_identifier(value, label)

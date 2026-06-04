@@ -10,9 +10,13 @@ from typing import Any
 import torch
 from sentence_transformers import SentenceTransformer
 
+from raccoon.logging_utils import get_logger
+
 from .BaseRetriever import BaseRetriever
-from raccoon.custom_retriever.util.Reranker import Reranker
+from raccoon.custom_retriever.reranker.BaseReranker import BaseReranker
 from .util.utils import pickle_load, save_embeddings
+
+log = get_logger(__name__)
 
 
 class DenseRetrieverSentenceBert(BaseRetriever):
@@ -23,7 +27,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
         config: dict[str, Any] | None = None,
         corpus: dict[str, dict[str, Any]] | None = None,
         queries: dict[str, str] | None = None,
-        reranker: Reranker | None = None,
+        reranker: BaseReranker | None = None,
         model_id: str | None = None,
         max_length: int | None = None,
         device: str | None = None,
@@ -63,6 +67,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
         if query_prompt_name and passage_prompt_name:
             prompts = {"query": query_prompt_name, "passage": passage_prompt_name}
 
+        log.info("Loading dense retriever model=%s device=%s", model_id, device or "auto")
         self.sentence_model = SentenceTransformer(
             model_name_or_path=model_id,
             trust_remote_code=True,
@@ -73,6 +78,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
             self.sentence_model.max_seq_length = max_length
         self.max_length = getattr(self.sentence_model, "max_seq_length", self.max_length)
         self.device = str(device or getattr(self.sentence_model, "device", ""))
+        log.info("Loaded dense retriever model on device=%s max_length=%s", self.device, self.max_length)
 
     @staticmethod
     def _sorted_corpus(corpus: dict[str, dict[str, Any]]) -> tuple[list[str], list[dict[str, Any]]]:
@@ -123,10 +129,17 @@ class DenseRetrieverSentenceBert(BaseRetriever):
 
         os.makedirs(encode_output_path, exist_ok=True)
         query_file = os.path.join(encode_output_path, query_filename)
+        log.info(
+            "Encoding dense retrieval inputs: queries=%d corpus=%d output=%s",
+            len(queries),
+            len(corpus),
+            encode_output_path,
+        )
 
         if overwrite or not os.path.exists(query_file):
             qids = list(queries.keys())
             qtxt = [queries[qid] for qid in qids]
+            log.info("Encoding %d queries", len(qids))
             qemb = self.sentence_model.encode(
                 qtxt,
                 batch_size=self.batch_size,
@@ -142,12 +155,14 @@ class DenseRetrieverSentenceBert(BaseRetriever):
             shard_name = corpus_filename.replace("*", str(shard_idx)) if "*" in corpus_filename else f"corpus.{shard_idx}.pkl"
             shard_file = os.path.join(encode_output_path, shard_name)
             if not overwrite and os.path.exists(shard_file):
+                log.info("Using existing corpus embedding shard: %s", shard_file)
                 continue
 
             end = min(start + self.corpus_chunk_size, len(cdocs))
             docs = cdocs[start:end]
             ids = cids[start:end]
             passages = [f"{d.get('title', '')}\n{d.get('text', '')}".strip() for d in docs]
+            log.info("Encoding corpus shard %d: documents=%d path=%s", shard_idx, len(passages), shard_file)
             cemb = self.sentence_model.encode(
                 passages,
                 batch_size=self.batch_size,
@@ -178,6 +193,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
     ) -> dict[str, dict[str, float]]:
         top_k = top_k or self.topk
 
+        log.info("Starting dense search top_k=%s score_function=%s use_faiss=%s", top_k, score_function, use_faiss)
         encode_start = perf_counter()
         artifacts = self.encode(
             corpus=corpus,
@@ -188,6 +204,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
             corpus_filename=corpus_filename,
         )
         encode_latency = perf_counter() - encode_start
+        log.info("Dense encoding finished in %.2fs", encode_latency)
 
         search_start = perf_counter()
         q_np, q_ids = pickle_load(artifacts["query_embeddings_file"])
@@ -251,6 +268,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
                 use_faiss=use_faiss,
                 results=out,
             )
+            log.info("Dense FAISS search finished in %.2fs", self.metrics["query_time"]["search"]["time_in_seconds"])
             if self.reranker is not None:
                 self.store_rerank_results()
             return out
@@ -302,6 +320,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
             use_faiss=use_faiss,
             results=out,
         )
+        log.info("Dense torch search finished in %.2fs", self.metrics["query_time"]["search"]["time_in_seconds"])
 
         if self.reranker is not None:
             self.store_rerank_results()
@@ -367,4 +386,4 @@ class DenseRetrieverSentenceBert(BaseRetriever):
         raise NotImplementedError("Dense retriever does not support create_index().")
 
     def index_corpus(self, *args, **kwargs) -> None:
-        raise NotImplementedError("Dense retriever does not support index_corpous().")
+        raise NotImplementedError("Dense retriever does not support index_corpus().")

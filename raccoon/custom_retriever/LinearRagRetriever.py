@@ -1,5 +1,5 @@
 from .BaseRetriever import BaseRetriever
-from raccoon.custom_retriever.util.Reranker import Reranker
+from raccoon.custom_retriever.reranker.BaseReranker import BaseReranker
 from typing import Any, Dict, Set, List, Optional, Tuple
 from raccoon.custom_retriever.util.SimpleBM25 import SimpleBM25
 from raccoon.custom_retriever.util.InMemoryEmbeddingStore import EmbeddingStore
@@ -18,17 +18,21 @@ import hashlib
 import numpy as np
 import igraph as ig
 import re
+from raccoon.logging_utils import get_logger
 from .util.utils import (join_title_text, min_max_normalize, rrf_fuse)
+
+log = get_logger(__name__)
 
 
 class LinearRagRetriever(BaseRetriever):
     retriever_type = "linear"
+    CACHE_SCHEMA_VERSION = 1
     def __init__(
         self,
         config: Dict[str, Any] | None = None,
         corpus: Dict | None = None,
         queries: Dict | None = None,
-        reranker: Reranker | None = None
+        reranker: BaseReranker | None = None
     ) -> None:
         self.config = config or {}
         self.corpus = corpus
@@ -75,18 +79,18 @@ class LinearRagRetriever(BaseRetriever):
             return
         cache_load_latency = time.perf_counter() - cache_load_start
         
-        print("Preparing passages...")
+        log.info("Preparing passages")
 
         self.doc_ids = list(self.corpus.keys())
         self.doc_texts = {doc_id: join_title_text(self.corpus[doc_id]) for doc_id in self.doc_ids}
 
-        print("Building local BM25 index...")
+        log.info("Building local BM25 index")
         bm25_start = time.perf_counter()
         self.bm25 = SimpleBM25()
         self.bm25.build(self.doc_texts)
         bm25_latency = time.perf_counter() - bm25_start
 
-        print("Running spaCy concept extraction...")
+        log.info("Running spaCy concept extraction")
         concept_start = time.perf_counter()
         self.extractor = ConceptExtractor(
             self.config.get("spacy_model_name", "nl_core_news_sm"),
@@ -132,7 +136,7 @@ class LinearRagRetriever(BaseRetriever):
             done = min(start + ner_batch_size, total)
 
             if done >= next_print or done == total:
-                print(
+                log.info(
                     f"Concept extraction: {done}/{total}, "
                     f"batch time={time.perf_counter() - batch_start_time:.3f}s, "
                     f"total time={time.perf_counter() - total_start_time:.3f}s"
@@ -156,8 +160,8 @@ class LinearRagRetriever(BaseRetriever):
             if df >= self.config.get("min_concept_df", 1) and (df / total_docs) <= self.config.get("max_concept_df_ratio", 0.30)
         }
 
-        print("Concepts before filtering: %d", len(concept_df))
-        print("Concepts after filtering : %d", len(valid_concepts))
+        log.info("Concepts before filtering: %d", len(concept_df))
+        log.info("Concepts after filtering: %d", len(valid_concepts))
 
         passage_id_to_concepts = {
             doc_id: {c for c in concepts if c in valid_concepts}
@@ -174,7 +178,7 @@ class LinearRagRetriever(BaseRetriever):
         concept_latency = time.perf_counter() - concept_start
 
         # Unload spaCy from GPU before embedding phase.
-        print("Unloading spaCy before embedding phase...")
+        log.info("Unloading spaCy before embedding phase")
         del self.extractor
         self.extractor = None
 
@@ -199,31 +203,31 @@ class LinearRagRetriever(BaseRetriever):
             backend="memory",
         )
 
-        print("Num docs     : %d", len(self.doc_ids))
-        print("Num concepts : %d", len(concept_texts))
-        print("Num sentences: %d", len(sentence_texts))
+        log.info("Num docs: %d", len(self.doc_ids))
+        log.info("Num concepts: %d", len(concept_texts))
+        log.info("Num sentences: %d", len(sentence_texts))
 
-        print("Encoding passages...")
+        log.info("Encoding passages")
         embedding_start = time.perf_counter()
         self.passage_store.build(
             [(doc_id, self.doc_texts[doc_id]) for doc_id in self.doc_ids],
             prefix_text="passage",
         )
 
-        print("Encoding concepts...")
+        log.info("Encoding concepts")
         self.concept_store.build(
             [(f"concept::{i}", concept) for i, concept in enumerate(concept_texts)],
             prefix_text="entity",
         )
 
-        print("Encoding sentences...")
+        log.info("Encoding sentences")
         self.sentence_store.build(
             [(f"sent::{i}", sent) for i, sent in enumerate(sentence_texts)],
             prefix_text="sentence",
         )
         embedding_latency = time.perf_counter() - embedding_start
 
-        print("Reloading spaCy on CPU for query concept extraction...")
+        log.info("Reloading spaCy on CPU for query concept extraction")
         self.extractor = ConceptExtractor(self.config.get("spacy_model_name", "nl_core_news_sm"), use_gpu=self.use_gpu_for_spacy and torch.cuda.is_available(),
                                             min_concept_len=self.config.get("min_concept_len", 6),
                                             max_concept_words=self.config.get("max_concept_words", 4),
@@ -322,7 +326,7 @@ class LinearRagRetriever(BaseRetriever):
                 self.query_graph_query = query
 
             if i == 1 or i % 10 == 0 or i == total_queries:
-                print(f"Retrieving queries: {i}/{total_queries}")
+                log.info("Retrieving queries: %d/%d", i, total_queries)
         self.results = results
         search_latency = time.perf_counter() - search_start
         result_counts = [len(row) for row in results.values()]
@@ -678,7 +682,7 @@ class LinearRagRetriever(BaseRetriever):
             "snowflake/snowflake-arctic-embed-l-v2.0"
         )
 
-        print(f"Loading embedding model on {device}...")
+        log.info("Loading embedding model on %s", device)
 
         self.embedding_model = SentenceTransformer(
             model_name,
@@ -728,6 +732,19 @@ class LinearRagRetriever(BaseRetriever):
 
         os.makedirs(path, exist_ok=True)
         return path
+
+    def _cache_manifest(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.CACHE_SCHEMA_VERSION,
+            "embedding_model": self.config.get("embedding_model_name", "snowflake/snowflake-arctic-embed-l-v2.0"),
+            "spacy_model": self.config.get("spacy_model_name", "nl_core_news_sm"),
+            "dataset_name": self.config.get("dataset_name", "default_dataset"),
+            "max_seq_length": self.config.get("max_seq_length"),
+            "min_concept_len": self.config.get("min_concept_len"),
+            "max_concept_words": self.config.get("max_concept_words"),
+            "min_concept_df": self.config.get("min_concept_df"),
+            "max_concept_df_ratio": self.config.get("max_concept_df_ratio"),
+        }
 
     def _cache_size_bytes(self) -> int:
         path = self._get_cache_path()
@@ -835,7 +852,10 @@ class LinearRagRetriever(BaseRetriever):
                 "concept_id_to_passage_ids": dict(self.concept_id_to_passage_ids),
             }, f)
 
-        print(f"[CACHE] Saved embedding cache → {path}")
+        with open(os.path.join(path, "manifest.json"), "w", encoding="utf-8") as f:
+            json.dump(self._cache_manifest(), f, ensure_ascii=False, indent=2)
+
+        log.info("[CACHE] Saved embedding cache to %s", path)
 
     def _load_embedding_stores(self):
         path = self._get_cache_path()
@@ -848,6 +868,7 @@ class LinearRagRetriever(BaseRetriever):
             "bm25.pkl",
             "documents.pkl",
             "graph_mappings.pkl",
+            "manifest.json",
         ]
 
         missing = [
@@ -856,10 +877,17 @@ class LinearRagRetriever(BaseRetriever):
         ]
 
         if missing:
-            print(f"[CACHE] Missing cache files: {missing}")
+            log.info("[CACHE] Missing cache files: %s", missing)
             return False
 
         try:
+            with open(os.path.join(path, "manifest.json"), "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+            expected_manifest = self._cache_manifest()
+            if manifest != expected_manifest:
+                log.info("[CACHE] Manifest mismatch for %s", path)
+                return False
+
             # Documents
             with open(os.path.join(path, "documents.pkl"), "rb") as f:
                 docs = pickle.load(f)
@@ -926,11 +954,11 @@ class LinearRagRetriever(BaseRetriever):
                 stop_concept=self.config.get("stop_concept",[])
             )
 
-            print(f"[CACHE] Loaded embedding cache ← {path}")
+            log.info("[CACHE] Loaded embedding cache from %s", path)
             return True
 
         except Exception as e:
-            print(f"[CACHE] Failed loading cache: {e}")
+            log.warning("[CACHE] Failed loading cache from %s: %s", path, e)
             return False
     
     def export_query_graph_png(

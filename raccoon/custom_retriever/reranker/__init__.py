@@ -1,13 +1,13 @@
 __all__ = [
-    "BaseLoader",
-    "FixedDocumentLoader",
-    "SQLDocumentLoader",
+    "BaseReranker",
+    "CrossEncoderReranker",
+    "ColBertReranker",
 ]
 
 _EXPORTS = {
-    "BaseLoader": ".BaseLoader",
-    "FixedDocumentLoader": ".FixedDocumentLoader",
-    "SQLDocumentLoader": ".SQLDocumentLoader",
+    "BaseReranker": ".BaseReranker",
+    "CrossEncoderReranker": ".CrossEncoderReranker",
+    "ColBertReranker": ".ColBertReranker",
 }
 
 
