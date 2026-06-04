@@ -22,15 +22,15 @@ OUTPUT_PATH_CHUNKS = Path("data/processed/rechtspraken_chunks")
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
 SPLADE_MODEL_NAME = "sparse-encoder/splade-robbert-dutch-base-v1"
 
-QUERY_PROMPT_PATH = "prompts/example_rechtspraak/query_scenarios/query_generation_long_form.txt"
+QUERY_PROMPT_PATH = "prompts/example_rechtspraak/query_scenarios/query_generation_ambiguous.txt"
 QUERY_VALIDATION_PATH = "prompts/example_rechtspraak/query_validation.txt"
 CANDIDATE_JUDGING_PATH = "prompts/example_rechtspraak/candidate_judging.txt"
 DISTRIBUTION_VALIDATION_PATH = "prompts/example_rechtspraak/distribution_validation.txt"
 
 
-OUTPUT_PATH_SYNTH = Path("data/processed/rechtspraken/rechtspraken_beir_long_form")
+OUTPUT_PATH_SYNTH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous")
 
-RESULT_FILE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_long_form/eval_results.json")
+RESULT_FILE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous/eval_results.json")
 
 
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
@@ -42,13 +42,13 @@ MAX_LENGTH = 512
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 QUERY_PROMPT_NAME = "query"
 PASSAGE_PROMPT_NAME = "document"
-ENCODE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_long_form/encode/")
-LINEAR_CACHE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_long_form/linear_rag_cache")
+ENCODE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous/encode/")
+LINEAR_CACHE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous/linear_rag_cache")
 
 RETRIEVERS = []
 
 
-PDF_PATH = Path("data/processed/rechtspraken/report_long_form.pdf")
+PDF_PATH = Path("data/processed/rechtspraken/report_ambiguous.pdf")
 
 
 def main() -> None:

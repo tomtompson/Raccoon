@@ -13,6 +13,7 @@ log = get_logger(__name__)
 
 
 class ColBERTReranker(BaseReranker):
+    retriever_type = "colbert"
     def __init__(
         self,
         model_id: str = "colbert-ir/colbertv2.0",

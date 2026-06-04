@@ -493,7 +493,7 @@ class StaticRetrieverReport:
             Spacer(1, 6),]
             story += self._comparison_color_table(styles)
             story += [
-            self._overlap_grouped_bar_chart(metric_maps, chart_metrics),
+            self._overlap_grouped_bar_chart(retrievers, metric_maps, chart_metrics),
             Spacer(1, 6),]
 
         story += [
@@ -559,6 +559,7 @@ class StaticRetrieverReport:
 
         for retriever in retrievers:
             name = self._name(retriever)
+            rerank_name = self._name(getattr(retriever, "reranker", None))
             retriever_type = getattr(retriever, "retriever_type", "")
 
             retrieval_metrics = getattr(retriever, "retrieval_metrics", {}) or {}
@@ -631,7 +632,7 @@ class StaticRetrieverReport:
 
             rows.append(
                 {
-                    "name": name + " + rerank",
+                   "name": self._reranked_name(retriever),
                     "ndcg_10": ndcg_10,
                     "recall_10": recall_10,
                     "index_time": index_time,
@@ -1333,7 +1334,7 @@ class StaticRetrieverReport:
                 rows.append((name, base_rows))
 
             if rerank_rows:
-                rows.append((f"{name} + rerank", rerank_rows))
+                rows.append((self._reranked_name(retriever), rerank_rows))
 
         return rows
 
@@ -1428,6 +1429,7 @@ class StaticRetrieverReport:
 
     def _overlap_grouped_bar_chart(
         self,
+        retrievers: list[Any],
         metric_maps: list[tuple[str, dict[str, float]]],
         metrics: list[str],
     ) -> Drawing:
@@ -1439,17 +1441,25 @@ class StaticRetrieverReport:
         row_height = 9
         group_height = 11 + row_height * len(metrics)
 
-        base_rows = [
-            (name, values)
-            for name, values in metric_maps
-            if not name.endswith(" + rerank")
-        ]
+        lookup = dict(metric_maps)
+
+        base_rows = []
+        for retriever in retrievers:
+            base_name = self._name(retriever)
+            base_values = lookup.get(base_name, {})
+            if base_values:
+                base_rows.append((retriever, base_name, base_values))
 
         height = max(32, 8 + group_height * len(base_rows))
         drawing = Drawing(width, height)
 
         max_value = max(
-            [float(values[metric]) for _, values in metric_maps for metric in metrics if metric in values]
+            [
+                float(values[metric])
+                for _, values in metric_maps
+                for metric in metrics
+                if metric in values
+            ]
             + [1.0]
         )
 
@@ -1457,11 +1467,10 @@ class StaticRetrieverReport:
         rerank_color = colors.HexColor("#F97316")
         background_color = colors.HexColor("#E5E7EB")
 
-        lookup = dict(metric_maps)
-
         y = height - 12
-        for base_name, base_values in base_rows:
-            rerank_name = f"{base_name} + rerank"
+
+        for retriever, base_name, base_values in base_rows:
+            rerank_name = self._reranked_name(retriever)
             rerank_values = lookup.get(rerank_name, {})
 
             drawing.add(
@@ -1508,8 +1517,6 @@ class StaticRetrieverReport:
                 if rerank_value is not None:
                     bars.append(("rerank", rerank_value, rerank_color))
 
-                # Draw higher value first, so it stays visually in the back.
-                # Draw lower value last, so it appears in front.
                 bars = sorted(bars, key=lambda item: item[1], reverse=True)
 
                 for _, value, color in bars:
@@ -1525,17 +1532,15 @@ class StaticRetrieverReport:
                         )
                     )
 
-                label_parts = []
-                if base_value is not None:
-                    label_parts.append(f"B {self._format(base_value)}")
+                value_text = self._format(base_value)
                 if rerank_value is not None:
-                    label_parts.append(f"R {self._format(rerank_value)}")
+                    value_text = f"{self._format(base_value)} / {self._format(rerank_value)}"
 
                 drawing.add(
                     String(
                         bar_start + bar_width + 4,
-                        metric_y + 1,
-                        " / ".join(label_parts),
+                        metric_y,
+                        value_text,
                         fontSize=6,
                         fillColor=colors.HexColor("#111827"),
                     )
@@ -2091,6 +2096,19 @@ class StaticRetrieverReport:
         retriever_type = getattr(retriever, "retriever_type", None)
         name = type(retriever).__name__
         return f"{name} ({retriever_type})" if retriever_type else name
+    
+    def _reranker_label(self, retriever: Any) -> str:
+        reranker = getattr(retriever, "reranker", None)
+        reranker_name = self._name(reranker) if reranker is not None else ""
+
+        if reranker_name:
+            return reranker_name
+
+        return "rerank"
+
+
+    def _reranked_name(self, retriever: Any) -> str:
+        return f"{self._name(retriever)} + {self._reranker_label(retriever)}"
 
     def _join_metric(self, prefix: str, label: str) -> str:
         if not prefix or "@" in label:

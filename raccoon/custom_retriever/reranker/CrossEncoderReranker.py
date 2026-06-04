@@ -13,6 +13,7 @@ log = get_logger(__name__)
 
 
 class CrossEncoderReranker(BaseReranker):
+    retriever_type = "cross-encoder"
     def __init__(
         self,
         model_id: str,
