@@ -1,0 +1,483 @@
+{
+    "bm25": {
+        "metrics": {
+            "retrieval": {
+                "ndcg": {
+                    "NDCG@1": 0.78667,
+                    "NDCG@3": 0.63596,
+                    "NDCG@5": 0.57467,
+                    "NDCG@10": 0.64136,
+                    "NDCG@20": 0.68963
+                },
+                "map": {
+                    "MAP@1": 0.17583,
+                    "MAP@3": 0.3465,
+                    "MAP@5": 0.4359,
+                    "MAP@10": 0.49388,
+                    "MAP@20": 0.52759
+                },
+                "recall": {
+                    "Recall@1": 0.17583,
+                    "Recall@3": 0.36817,
+                    "Recall@5": 0.4975,
+                    "Recall@10": 0.6275,
+                    "Recall@20": 0.748
+                },
+                "p": {
+                    "P@1": 0.83,
+                    "P@3": 0.59333,
+                    "P@5": 0.484,
+                    "P@10": 0.307,
+                    "P@20": 0.1835
+                }
+            },
+            "rerank": {
+                "ndcg": {
+                    "NDCG@1": 0.94667,
+                    "NDCG@3": 0.7732,
+                    "NDCG@5": 0.67569,
+                    "NDCG@10": 0.7345,
+                    "NDCG@20": 0.75793
+                },
+                "map": {
+                    "MAP@1": 0.20583,
+                    "MAP@3": 0.449,
+                    "MAP@5": 0.5591,
+                    "MAP@10": 0.61256,
+                    "MAP@20": 0.6289
+                },
+                "recall": {
+                    "Recall@1": 0.20583,
+                    "Recall@3": 0.451,
+                    "Recall@5": 0.575,
+                    "Recall@10": 0.691,
+                    "Recall@20": 0.748
+                },
+                "p": {
+                    "P@1": 0.98,
+                    "P@3": 0.73,
+                    "P@5": 0.562,
+                    "P@10": 0.339,
+                    "P@20": 0.1835
+                }
+            }
+        },
+        "timing": {
+            "index": {
+                "indexing": {
+                    "time_in_seconds": 10.346419306006283,
+                    "documents": 2594,
+                    "docs_per_second": 250.71475679456915,
+                    "backend": "elasticsearch",
+                    "storage_size_bytes": 2211979,
+                    "storage_size_mb": 2.1095075607299805
+                }
+            },
+            "query": {
+                "search": {
+                    "time_in_seconds": 1.0976243750192225,
+                    "time_per_query_in_seconds": 0.010976243750192224,
+                    "queries_per_second": 91.1058484814067,
+                    "queries": 100,
+                    "top_k": 20,
+                    "backend": "elasticsearch",
+                    "total_results": 2000,
+                    "avg_results_per_query": 20.0,
+                    "min_results_per_query": 20,
+                    "max_results_per_query": 20,
+                    "min_score": 3.1599069,
+                    "max_score": 24.632282,
+                    "avg_score": 9.1289467085
+                }
+            },
+            "rerank": {
+                "total_queries": 100,
+                "total_pairs": 2000,
+                "total_batches": 200,
+                "total_input_tokens": 482875,
+                "total_wall_time_sec": 8.9401,
+                "avg_time_query_sec": 0.0894,
+                "avg_time_batch_sec": 0.0447,
+                "pairs_per_sec": 223.71,
+                "queries_per_sec": 11.19,
+                "tokens_per_sec": 54012.35,
+                "peak_gpu_memory_gb": 1.21
+            }
+        }
+    },
+    "dense": {
+        "metrics": {
+            "retrieval": {
+                "ndcg": {
+                    "NDCG@1": 0.84667,
+                    "NDCG@3": 0.72432,
+                    "NDCG@5": 0.64123,
+                    "NDCG@10": 0.73686,
+                    "NDCG@20": 0.78323
+                },
+                "map": {
+                    "MAP@1": 0.18583,
+                    "MAP@3": 0.40633,
+                    "MAP@5": 0.50663,
+                    "MAP@10": 0.59619,
+                    "MAP@20": 0.63081
+                },
+                "recall": {
+                    "Recall@1": 0.18583,
+                    "Recall@3": 0.42233,
+                    "Recall@5": 0.55033,
+                    "Recall@10": 0.747,
+                    "Recall@20": 0.857
+                },
+                "p": {
+                    "P@1": 0.88,
+                    "P@3": 0.68667,
+                    "P@5": 0.54,
+                    "P@10": 0.367,
+                    "P@20": 0.211
+                }
+            },
+            "rerank": {
+                "ndcg": {
+                    "NDCG@1": 0.97667,
+                    "NDCG@3": 0.82973,
+                    "NDCG@5": 0.72182,
+                    "NDCG@10": 0.79955,
+                    "NDCG@20": 0.83274
+                },
+                "map": {
+                    "MAP@1": 0.20983,
+                    "MAP@3": 0.48767,
+                    "MAP@5": 0.61067,
+                    "MAP@10": 0.6859,
+                    "MAP@20": 0.71008
+                },
+                "recall": {
+                    "Recall@1": 0.20983,
+                    "Recall@3": 0.493,
+                    "Recall@5": 0.625,
+                    "Recall@10": 0.781,
+                    "Recall@20": 0.857
+                },
+                "p": {
+                    "P@1": 1.0,
+                    "P@3": 0.8,
+                    "P@5": 0.612,
+                    "P@10": 0.384,
+                    "P@20": 0.211
+                }
+            }
+        },
+        "timing": {
+            "index": {
+                "encoding": {
+                    "time_in_seconds": 38.7569390340941,
+                    "documents": 2594,
+                    "queries": 100,
+                    "shards": 1,
+                    "embedding_dim": 1024,
+                    "size_in_bytes": 11136732,
+                    "size_in_mb": 10.62081527709961,
+                    "docs_per_second": 66.92995021402706
+                }
+            },
+            "query": {
+                "search": {
+                    "time_in_seconds": 0.03864299296401441,
+                    "time_per_query_in_seconds": 0.0003864299296401441,
+                    "queries_per_second": 2587.791274167692,
+                    "queries": 100,
+                    "top_k": 20,
+                    "score_function": "dot",
+                    "use_faiss": false,
+                    "backend": "torch",
+                    "total_results": 2000,
+                    "avg_results_per_query": 20.0,
+                    "min_results_per_query": 20,
+                    "max_results_per_query": 20,
+                    "min_score": 0.1544511765241623,
+                    "max_score": 0.7741972208023071,
+                    "avg_score": 0.4102451829314232
+                }
+            },
+            "rerank": {
+                "total_queries": 100,
+                "total_pairs": 2000,
+                "total_batches": 200,
+                "total_input_tokens": 468225,
+                "total_wall_time_sec": 8.7017,
+                "avg_time_query_sec": 0.087,
+                "avg_time_batch_sec": 0.0435,
+                "pairs_per_sec": 229.84,
+                "queries_per_sec": 11.49,
+                "tokens_per_sec": 53808.43,
+                "peak_gpu_memory_gb": 3.32
+            }
+        }
+    },
+    "hybrid": {
+        "metrics": {
+            "retrieval": {
+                "ndcg": {
+                    "NDCG@1": 0.88,
+                    "NDCG@3": 0.7111,
+                    "NDCG@5": 0.62713,
+                    "NDCG@10": 0.72312,
+                    "NDCG@20": 0.77792
+                },
+                "map": {
+                    "MAP@1": 0.19383,
+                    "MAP@3": 0.39333,
+                    "MAP@5": 0.48377,
+                    "MAP@10": 0.57305,
+                    "MAP@20": 0.61399
+                },
+                "recall": {
+                    "Recall@1": 0.19383,
+                    "Recall@3": 0.41033,
+                    "Recall@5": 0.53367,
+                    "Recall@10": 0.725,
+                    "Recall@20": 0.857
+                },
+                "p": {
+                    "P@1": 0.92,
+                    "P@3": 0.66667,
+                    "P@5": 0.522,
+                    "P@10": 0.356,
+                    "P@20": 0.211
+                }
+            },
+            "rerank": {
+                "ndcg": {
+                    "NDCG@1": 0.97667,
+                    "NDCG@3": 0.82973,
+                    "NDCG@5": 0.72182,
+                    "NDCG@10": 0.79871,
+                    "NDCG@20": 0.83266
+                },
+                "map": {
+                    "MAP@1": 0.20983,
+                    "MAP@3": 0.48767,
+                    "MAP@5": 0.61067,
+                    "MAP@10": 0.6849,
+                    "MAP@20": 0.70984
+                },
+                "recall": {
+                    "Recall@1": 0.20983,
+                    "Recall@3": 0.493,
+                    "Recall@5": 0.625,
+                    "Recall@10": 0.779,
+                    "Recall@20": 0.857
+                },
+                "p": {
+                    "P@1": 1.0,
+                    "P@3": 0.8,
+                    "P@5": 0.612,
+                    "P@10": 0.383,
+                    "P@20": 0.211
+                }
+            }
+        },
+        "timing": {
+            "index": {
+                "indexing": {
+                    "time_in_seconds": 49.103358340100385,
+                    "documents": 5188,
+                    "docs_per_second": 105.65468789459979,
+                    "retrievers": 2,
+                    "child_retrievers": [
+                        {
+                            "retriever": "BM25Retriever",
+                            "weight": 0.3,
+                            "phase": "indexing",
+                            "time_in_seconds": 10.346419306006283,
+                            "documents": 2594,
+                            "docs_per_second": 250.71475679456915,
+                            "details": {
+                                "time_in_seconds": 10.346419306006283,
+                                "documents": 2594,
+                                "docs_per_second": 250.71475679456915,
+                                "backend": "elasticsearch",
+                                "storage_size_bytes": 2211979,
+                                "storage_size_mb": 2.1095075607299805
+                            }
+                        },
+                        {
+                            "retriever": "DenseRetrieverSentenceBert",
+                            "weight": 0.7,
+                            "phase": "encoding",
+                            "time_in_seconds": 38.7569390340941,
+                            "documents": 2594,
+                            "docs_per_second": 66.92995021402706,
+                            "details": {
+                                "time_in_seconds": 38.7569390340941,
+                                "documents": 2594,
+                                "queries": 100,
+                                "shards": 1,
+                                "embedding_dim": 1024,
+                                "size_in_bytes": 11136732,
+                                "size_in_mb": 10.62081527709961,
+                                "docs_per_second": 66.92995021402706
+                            }
+                        }
+                    ],
+                    "size_in_mb": 12.73032283782959
+                }
+            },
+            "query": {
+                "search": {
+                    "time_in_seconds": 1.1380986189469695,
+                    "retriever_time_in_seconds": 1.136267367983237,
+                    "rrf_time_in_seconds": 0.0018312509637326002,
+                    "wrapper_time_in_seconds": 0.002007643925026059,
+                    "execution_mode": "sequential",
+                    "time_per_query_in_seconds": 0.011380986189469694,
+                    "queries_per_second": 87.86584777031486,
+                    "queries": 100,
+                    "top_k": 20,
+                    "retrievers": 2,
+                    "rrf_k": 60,
+                    "retriever_timings": [
+                        {
+                            "retriever": "BM25Retriever",
+                            "weight": 0.3,
+                            "time_in_seconds": 1.0976243750192225,
+                            "queries": 100,
+                            "avg_time_per_query": 0.010976243750192224
+                        },
+                        {
+                            "retriever": "DenseRetrieverSentenceBert",
+                            "weight": 0.7,
+                            "time_in_seconds": 0.03864299296401441,
+                            "queries": 100,
+                            "avg_time_per_query": 0.0003864299296401441
+                        }
+                    ],
+                    "total_results": 2000,
+                    "avg_results_per_query": 20.0,
+                    "min_results_per_query": 20,
+                    "max_results_per_query": 20,
+                    "min_score": 0.008749999999999999,
+                    "max_score": 0.016393442622950817,
+                    "avg_score": 0.01215844005066046
+                }
+            },
+            "rerank": {
+                "total_queries": 100,
+                "total_pairs": 2000,
+                "total_batches": 200,
+                "total_input_tokens": 468225,
+                "total_wall_time_sec": 8.6616,
+                "avg_time_query_sec": 0.0866,
+                "avg_time_batch_sec": 0.0433,
+                "pairs_per_sec": 230.9,
+                "queries_per_sec": 11.55,
+                "tokens_per_sec": 54057.4,
+                "peak_gpu_memory_gb": 3.32
+            }
+        }
+    },
+    "linear": {
+        "metrics": {
+            "retrieval": {},
+            "rerank": {
+                "ndcg": {
+                    "NDCG@1": 0.97333,
+                    "NDCG@3": 0.82784,
+                    "NDCG@5": 0.73031,
+                    "NDCG@10": 0.80777,
+                    "NDCG@20": 0.85652
+                },
+                "map": {
+                    "MAP@1": 0.20983,
+                    "MAP@3": 0.489,
+                    "MAP@5": 0.626,
+                    "MAP@10": 0.69945,
+                    "MAP@20": 0.737
+                },
+                "recall": {
+                    "Recall@1": 0.20983,
+                    "Recall@3": 0.493,
+                    "Recall@5": 0.641,
+                    "Recall@10": 0.795,
+                    "Recall@20": 0.9095
+                },
+                "p": {
+                    "P@1": 1.0,
+                    "P@3": 0.8,
+                    "P@5": 0.628,
+                    "P@10": 0.391,
+                    "P@20": 0.224
+                }
+            }
+        },
+        "timing": {
+            "index": {
+                "indexing": {
+                    "time_in_seconds": 60.093047871021554,
+                    "documents": 2594,
+                    "concepts": 5255,
+                    "sentences": 26480,
+                    "concepts_per_document": 2.025828835774865,
+                    "sentences_per_document": 10.20817270624518,
+                    "passage_concept_links": 55496,
+                    "concept_sentence_links": 54784,
+                    "sentence_passage_links": 41217,
+                    "embedding_dim": 1024,
+                    "size_in_bytes": 2456211531,
+                    "size_in_mb": 2342.4258527755737,
+                    "docs_per_second": 43.166390986982954,
+                    "cache_loaded": false,
+                    "cache_path": "data/processed/symfony/symphony_beir_lexical/linear_rag_cache/snowflake-arctic-embed-l-v2.0-symphony_beir_lexical-8c8f3fc332",
+                    "embedding_model": "snowflake/snowflake-arctic-embed-l-v2.0",
+                    "spacy_model": "nl_core_news_sm",
+                    "backend": "faiss",
+                    "phase_times": {
+                        "model_load_time_in_seconds": 11.801397235016339,
+                        "cache_lookup_time_in_seconds": 0.0003916219575330615,
+                        "bm25_build_time_in_seconds": 0.16432745894417167,
+                        "concept_extraction_time_in_seconds": 19.0208981949836,
+                        "embedding_build_time_in_seconds": 21.897805523942225,
+                        "cache_save_time_in_seconds": 5.968717220006511
+                    }
+                }
+            },
+            "query": {
+                "search": {
+                    "time_in_seconds": 22.780201077926904,
+                    "time_per_query_in_seconds": 0.22780201077926904,
+                    "queries_per_second": 4.389776879401471,
+                    "queries": 100,
+                    "top_k": 20,
+                    "dense_candidate_k": 500,
+                    "bm25_candidate_k": 500,
+                    "graph_candidate_k": 500,
+                    "dense_rrf_weight": 0.0,
+                    "bm25_rrf_weight": 0.0,
+                    "graph_rrf_weight": 1.0,
+                    "rrf_k": 60,
+                    "total_results": 2000,
+                    "avg_results_per_query": 20.0,
+                    "min_results_per_query": 20,
+                    "max_results_per_query": 20,
+                    "min_score": 0.0125,
+                    "max_score": 0.01639344262295082,
+                    "avg_score": 0.014280443299688935
+                }
+            },
+            "rerank": {
+                "total_queries": 100,
+                "total_pairs": 2000,
+                "total_batches": 200,
+                "total_input_tokens": 490691,
+                "total_wall_time_sec": 8.6832,
+                "avg_time_query_sec": 0.0868,
+                "avg_time_batch_sec": 0.0434,
+                "pairs_per_sec": 230.33,
+                "queries_per_sec": 11.52,
+                "tokens_per_sec": 56510.23,
+                "peak_gpu_memory_gb": 4.38
+            }
+        }
+    }
+}

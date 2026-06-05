@@ -11,6 +11,11 @@ wheels/
 
 
 # data
-data/
+data/processed/*_chunks
+data/processed/*/*/processed_parents.txt
+data/processed/*/*/qrels_debug.jsonl
+data/processed/*/*/encode/
+data/processed/*/*/linear_rag_cache/
+data/raw/
 reports/
 report_graphs/

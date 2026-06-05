@@ -1,0 +1,746 @@
+{
+    "bm25": {
+        "metrics": {
+            "retrieval": {
+                "ndcg": {
+                    "NDCG@1": 0.32803,
+                    "NDCG@3": 0.26945,
+                    "NDCG@5": 0.32034,
+                    "NDCG@10": 0.38544,
+                    "NDCG@20": 0.4279
+                },
+                "map": {
+                    "MAP@1": 0.11278,
+                    "MAP@3": 0.20338,
+                    "MAP@5": 0.24074,
+                    "MAP@10": 0.27877,
+                    "MAP@20": 0.29596
+                },
+                "recall": {
+                    "Recall@1": 0.11278,
+                    "Recall@3": 0.25147,
+                    "Recall@5": 0.34158,
+                    "Recall@10": 0.48587,
+                    "Recall@20": 0.6066
+                },
+                "p": {
+                    "P@1": 0.33746,
+                    "P@3": 0.25088,
+                    "P@5": 0.20459,
+                    "P@10": 0.14558,
+                    "P@20": 0.0909
+                }
+            },
+            "rerank": {
+                "ndcg": {
+                    "NDCG@1": 0.68669,
+                    "NDCG@3": 0.52135,
+                    "NDCG@5": 0.55084,
+                    "NDCG@10": 0.56804,
+                    "NDCG@20": 0.58389
+                },
+                "map": {
+                    "MAP@1": 0.23469,
+                    "MAP@3": 0.44022,
+                    "MAP@5": 0.47044,
+                    "MAP@10": 0.48143,
+                    "MAP@20": 0.48817
+                },
+                "recall": {
+                    "Recall@1": 0.23469,
+                    "Recall@3": 0.47232,
+                    "Recall@5": 0.52473,
+                    "Recall@10": 0.5636,
+                    "Recall@20": 0.6066
+                },
+                "p": {
+                    "P@1": 0.70318,
+                    "P@3": 0.47173,
+                    "P@5": 0.31449,
+                    "P@10": 0.1689,
+                    "P@20": 0.0909
+                }
+            }
+        },
+        "timing": {
+            "index": {
+                "indexing": {
+                    "time_in_seconds": 25.474081170046702,
+                    "documents": 25067,
+                    "docs_per_second": 984.0197898668329,
+                    "backend": "elasticsearch",
+                    "storage_size_bytes": 18114413,
+                    "storage_size_mb": 17.27525043487549
+                }
+            },
+            "query": {
+                "search": {
+                    "time_in_seconds": 1.8489078419515863,
+                    "time_per_query_in_seconds": 0.0032666216288897284,
+                    "queries_per_second": 306.126669570814,
+                    "queries": 566,
+                    "top_k": 20,
+                    "backend": "elasticsearch",
+                    "total_results": 11303,
+                    "avg_results_per_query": 19.969964664310954,
+                    "min_results_per_query": 3,
+                    "max_results_per_query": 20,
+                    "min_score": 0.7020189,
+                    "max_score": 44.76295,
+                    "avg_score": 12.51736149699018
+                }
+            },
+            "rerank": {
+                "total_queries": 566,
+                "total_pairs": 11303,
+                "total_batches": 1131,
+                "total_input_tokens": 1686199,
+                "total_wall_time_sec": 30.5514,
+                "avg_time_query_sec": 0.0539,
+                "avg_time_batch_sec": 0.027,
+                "pairs_per_sec": 369.97,
+                "queries_per_sec": 18.53,
+                "tokens_per_sec": 55192.27,
+                "peak_gpu_memory_gb": 1.16
+            }
+        }
+    },
+    "reranker-bm25": {
+        "rerank": {
+            "ndcg": {
+                "NDCG@1": 0.68669,
+                "NDCG@3": 0.52135,
+                "NDCG@5": 0.55084,
+                "NDCG@10": 0.56804,
+                "NDCG@20": 0.58389
+            },
+            "map": {
+                "MAP@1": 0.23469,
+                "MAP@3": 0.44022,
+                "MAP@5": 0.47044,
+                "MAP@10": 0.48143,
+                "MAP@20": 0.48817
+            },
+            "recall": {
+                "Recall@1": 0.23469,
+                "Recall@3": 0.47232,
+                "Recall@5": 0.52473,
+                "Recall@10": 0.5636,
+                "Recall@20": 0.6066
+            },
+            "p": {
+                "P@1": 0.70318,
+                "P@3": 0.47173,
+                "P@5": 0.31449,
+                "P@10": 0.1689,
+                "P@20": 0.0909
+            }
+        },
+        "rerank_time": {
+            "total_queries": 566,
+            "total_pairs": 11303,
+            "total_batches": 1131,
+            "total_input_tokens": 1686145,
+            "total_wall_time_sec": 30.7026,
+            "avg_time_query_sec": 0.0542,
+            "avg_time_batch_sec": 0.0271,
+            "pairs_per_sec": 368.15,
+            "tokens_per_sec": 54918.69,
+            "peak_gpu_memory_gb": 1.16,
+            "queries_per_sec": 18.43
+        }
+    },
+    "dense": {
+        "metrics": {
+            "retrieval": {
+                "ndcg": {
+                    "NDCG@1": 0.41225,
+                    "NDCG@3": 0.34071,
+                    "NDCG@5": 0.39904,
+                    "NDCG@10": 0.45322,
+                    "NDCG@20": 0.49081
+                },
+                "map": {
+                    "MAP@1": 0.14105,
+                    "MAP@3": 0.26188,
+                    "MAP@5": 0.30787,
+                    "MAP@10": 0.34096,
+                    "MAP@20": 0.35763
+                },
+                "recall": {
+                    "Recall@1": 0.14105,
+                    "Recall@3": 0.31567,
+                    "Recall@5": 0.41814,
+                    "Recall@10": 0.53887,
+                    "Recall@20": 0.64547
+                },
+                "p": {
+                    "P@1": 0.42226,
+                    "P@3": 0.31508,
+                    "P@5": 0.25053,
+                    "P@10": 0.16148,
+                    "P@20": 0.09673
+                }
+            },
+            "rerank": {
+                "ndcg": {
+                    "NDCG@1": 0.68433,
+                    "NDCG@3": 0.53098,
+                    "NDCG@5": 0.56894,
+                    "NDCG@10": 0.59472,
+                    "NDCG@20": 0.60904
+                },
+                "map": {
+                    "MAP@1": 0.23233,
+                    "MAP@3": 0.44906,
+                    "MAP@5": 0.48722,
+                    "MAP@10": 0.50441,
+                    "MAP@20": 0.51052
+                },
+                "recall": {
+                    "Recall@1": 0.23233,
+                    "Recall@3": 0.48233,
+                    "Recall@5": 0.55006,
+                    "Recall@10": 0.6066,
+                    "Recall@20": 0.64547
+                },
+                "p": {
+                    "P@1": 0.69611,
+                    "P@3": 0.48174,
+                    "P@5": 0.32968,
+                    "P@10": 0.1818,
+                    "P@20": 0.09673
+                }
+            }
+        },
+        "timing": {
+            "index": {
+                "encoding": {
+                    "time_in_seconds": 212.50253856205381,
+                    "documents": 25067,
+                    "queries": 566,
+                    "shards": 1,
+                    "embedding_dim": 1024,
+                    "size_in_bytes": 105974749,
+                    "size_in_mb": 101.06539630889893,
+                    "docs_per_second": 117.96094375917338
+                }
+            },
+            "query": {
+                "search": {
+                    "time_in_seconds": 0.15010696195531636,
+                    "time_per_query_in_seconds": 0.0002652066465641632,
+                    "queries_per_second": 3770.644563231425,
+                    "queries": 566,
+                    "top_k": 20,
+                    "score_function": "dot",
+                    "use_faiss": false,
+                    "backend": "torch",
+                    "total_results": 11320,
+                    "avg_results_per_query": 20.0,
+                    "min_results_per_query": 20,
+                    "max_results_per_query": 20,
+                    "min_score": 0.2767762243747711,
+                    "max_score": 0.8121241331100464,
+                    "avg_score": 0.5606165328342797
+                }
+            },
+            "rerank": {
+                "total_queries": 566,
+                "total_pairs": 11320,
+                "total_batches": 1132,
+                "total_input_tokens": 1720501,
+                "total_wall_time_sec": 30.5627,
+                "avg_time_query_sec": 0.054,
+                "avg_time_batch_sec": 0.027,
+                "pairs_per_sec": 370.39,
+                "queries_per_sec": 18.52,
+                "tokens_per_sec": 56294.19,
+                "peak_gpu_memory_gb": 3.88
+            }
+        }
+    },
+    "reranker-dense": {
+        "rerank": {
+            "ndcg": {
+                "NDCG@1": 0.68433,
+                "NDCG@3": 0.53098,
+                "NDCG@5": 0.56894,
+                "NDCG@10": 0.59472,
+                "NDCG@20": 0.60904
+            },
+            "map": {
+                "MAP@1": 0.23233,
+                "MAP@3": 0.44906,
+                "MAP@5": 0.48722,
+                "MAP@10": 0.50441,
+                "MAP@20": 0.51052
+            },
+            "recall": {
+                "Recall@1": 0.23233,
+                "Recall@3": 0.48233,
+                "Recall@5": 0.55006,
+                "Recall@10": 0.6066,
+                "Recall@20": 0.64547
+            },
+            "p": {
+                "P@1": 0.69611,
+                "P@3": 0.48174,
+                "P@5": 0.32968,
+                "P@10": 0.1818,
+                "P@20": 0.09673
+            }
+        },
+        "rerank_time": {
+            "total_queries": 566,
+            "total_pairs": 11320,
+            "total_batches": 1132,
+            "total_input_tokens": 1720501,
+            "total_wall_time_sec": 30.8977,
+            "avg_time_query_sec": 0.0546,
+            "avg_time_batch_sec": 0.0273,
+            "pairs_per_sec": 366.37,
+            "tokens_per_sec": 55683.86,
+            "peak_gpu_memory_gb": 3.27,
+            "queries_per_sec": 18.32
+        }
+    },
+    "hybrid": {
+        "metrics": {
+            "retrieval": {
+                "ndcg": {
+                    "NDCG@1": 0.45995,
+                    "NDCG@3": 0.37978,
+                    "NDCG@5": 0.44002,
+                    "NDCG@10": 0.49589,
+                    "NDCG@20": 0.51814
+                },
+                "map": {
+                    "MAP@1": 0.15754,
+                    "MAP@3": 0.29378,
+                    "MAP@5": 0.34487,
+                    "MAP@10": 0.37985,
+                    "MAP@20": 0.39042
+                },
+                "recall": {
+                    "Recall@1": 0.15754,
+                    "Recall@3": 0.35277,
+                    "Recall@5": 0.45995,
+                    "Recall@10": 0.58245,
+                    "Recall@20": 0.64547
+                },
+                "p": {
+                    "P@1": 0.47173,
+                    "P@3": 0.35218,
+                    "P@5": 0.27562,
+                    "P@10": 0.17456,
+                    "P@20": 0.09673
+                }
+            },
+            "rerank": {
+                "ndcg": {
+                    "NDCG@1": 0.68433,
+                    "NDCG@3": 0.53098,
+                    "NDCG@5": 0.56894,
+                    "NDCG@10": 0.59472,
+                    "NDCG@20": 0.60904
+                },
+                "map": {
+                    "MAP@1": 0.23233,
+                    "MAP@3": 0.44906,
+                    "MAP@5": 0.48722,
+                    "MAP@10": 0.50441,
+                    "MAP@20": 0.51052
+                },
+                "recall": {
+                    "Recall@1": 0.23233,
+                    "Recall@3": 0.48233,
+                    "Recall@5": 0.55006,
+                    "Recall@10": 0.6066,
+                    "Recall@20": 0.64547
+                },
+                "p": {
+                    "P@1": 0.69611,
+                    "P@3": 0.48174,
+                    "P@5": 0.32968,
+                    "P@10": 0.1818,
+                    "P@20": 0.09673
+                }
+            }
+        },
+        "timing": {
+            "index": {
+                "indexing": {
+                    "time_in_seconds": 237.97661973210052,
+                    "documents": 50134,
+                    "docs_per_second": 210.66775406944507,
+                    "retrievers": 2,
+                    "child_retrievers": [
+                        {
+                            "retriever": "BM25Retriever",
+                            "weight": 0.3,
+                            "phase": "indexing",
+                            "time_in_seconds": 25.474081170046702,
+                            "documents": 25067,
+                            "docs_per_second": 984.0197898668329,
+                            "details": {
+                                "time_in_seconds": 25.474081170046702,
+                                "documents": 25067,
+                                "docs_per_second": 984.0197898668329,
+                                "backend": "elasticsearch",
+                                "storage_size_bytes": 18114413,
+                                "storage_size_mb": 17.27525043487549
+                            }
+                        },
+                        {
+                            "retriever": "DenseRetrieverSentenceBert",
+                            "weight": 0.7,
+                            "phase": "encoding",
+                            "time_in_seconds": 212.50253856205381,
+                            "documents": 25067,
+                            "docs_per_second": 117.96094375917338,
+                            "details": {
+                                "time_in_seconds": 212.50253856205381,
+                                "documents": 25067,
+                                "queries": 566,
+                                "shards": 1,
+                                "embedding_dim": 1024,
+                                "size_in_bytes": 105974749,
+                                "size_in_mb": 101.06539630889893,
+                                "docs_per_second": 117.96094375917338
+                            }
+                        }
+                    ],
+                    "size_in_mb": 118.34064674377441
+                }
+            },
+            "query": {
+                "search": {
+                    "time_in_seconds": 2.0086591698927805,
+                    "retriever_time_in_seconds": 1.9990148039069027,
+                    "rrf_time_in_seconds": 0.009644365985877812,
+                    "wrapper_time_in_seconds": 0.010377645958214998,
+                    "execution_mode": "sequential",
+                    "time_per_query_in_seconds": 0.003548867791330001,
+                    "queries_per_second": 281.78000951262044,
+                    "queries": 566,
+                    "top_k": 20,
+                    "retrievers": 2,
+                    "rrf_k": 60,
+                    "retriever_timings": [
+                        {
+                            "retriever": "BM25Retriever",
+                            "weight": 0.3,
+                            "time_in_seconds": 1.8489078419515863,
+                            "queries": 566,
+                            "avg_time_per_query": 0.0032666216288897284
+                        },
+                        {
+                            "retriever": "DenseRetrieverSentenceBert",
+                            "weight": 0.7,
+                            "time_in_seconds": 0.15010696195531636,
+                            "queries": 566,
+                            "avg_time_per_query": 0.0002652066465641632
+                        }
+                    ],
+                    "total_results": 11320,
+                    "avg_results_per_query": 20.0,
+                    "min_results_per_query": 20,
+                    "max_results_per_query": 20,
+                    "min_score": 0.008749999999999999,
+                    "max_score": 0.016393442622950817,
+                    "avg_score": 0.010931400263030541
+                }
+            },
+            "rerank": {
+                "total_queries": 566,
+                "total_pairs": 11320,
+                "total_batches": 1132,
+                "total_input_tokens": 1720501,
+                "total_wall_time_sec": 30.5197,
+                "avg_time_query_sec": 0.0539,
+                "avg_time_batch_sec": 0.0269,
+                "pairs_per_sec": 370.91,
+                "queries_per_sec": 18.55,
+                "tokens_per_sec": 56373.38,
+                "peak_gpu_memory_gb": 3.88
+            }
+        }
+    },
+    "reranker-hybrid": {
+        "rerank": {
+            "ndcg": {
+                "NDCG@1": 0.68433,
+                "NDCG@3": 0.53098,
+                "NDCG@5": 0.56894,
+                "NDCG@10": 0.59472,
+                "NDCG@20": 0.60904
+            },
+            "map": {
+                "MAP@1": 0.23233,
+                "MAP@3": 0.44906,
+                "MAP@5": 0.48722,
+                "MAP@10": 0.50441,
+                "MAP@20": 0.51052
+            },
+            "recall": {
+                "Recall@1": 0.23233,
+                "Recall@3": 0.48233,
+                "Recall@5": 0.55006,
+                "Recall@10": 0.6066,
+                "Recall@20": 0.64547
+            },
+            "p": {
+                "P@1": 0.69611,
+                "P@3": 0.48174,
+                "P@5": 0.32968,
+                "P@10": 0.1818,
+                "P@20": 0.09673
+            }
+        },
+        "rerank_time": {
+            "total_queries": 566,
+            "total_pairs": 11320,
+            "total_batches": 1132,
+            "total_input_tokens": 1720501,
+            "total_wall_time_sec": 30.8198,
+            "avg_time_query_sec": 0.0544,
+            "avg_time_batch_sec": 0.0272,
+            "pairs_per_sec": 367.3,
+            "tokens_per_sec": 55824.48,
+            "peak_gpu_memory_gb": 3.27,
+            "queries_per_sec": 18.36
+        }
+    },
+    "linear": {
+        "metrics": {
+            "retrieval": {},
+            "rerank": {
+                "ndcg": {
+                    "NDCG@1": 0.74499,
+                    "NDCG@3": 0.59195,
+                    "NDCG@5": 0.64771,
+                    "NDCG@10": 0.67963,
+                    "NDCG@20": 0.70451
+                },
+                "map": {
+                    "MAP@1": 0.25353,
+                    "MAP@3": 0.50785,
+                    "MAP@5": 0.56183,
+                    "MAP@10": 0.58532,
+                    "MAP@20": 0.5962
+                },
+                "recall": {
+                    "Recall@1": 0.25353,
+                    "Recall@3": 0.54653,
+                    "Recall@5": 0.64488,
+                    "Recall@10": 0.71614,
+                    "Recall@20": 0.78563
+                },
+                "p": {
+                    "P@1": 0.75972,
+                    "P@3": 0.54594,
+                    "P@5": 0.38657,
+                    "P@10": 0.21466,
+                    "P@20": 0.11776
+                }
+            }
+        },
+        "timing": {
+            "index": {
+                "indexing": {
+                    "time_in_seconds": 394.00499123195186,
+                    "documents": 25067,
+                    "concepts": 38182,
+                    "sentences": 104496,
+                    "concepts_per_document": 1.5231978298160929,
+                    "sentences_per_document": 4.168667969840826,
+                    "passage_concept_links": 788343,
+                    "concept_sentence_links": 832798,
+                    "sentence_passage_links": 152776,
+                    "embedding_dim": 1024,
+                    "size_in_bytes": 3098257150,
+                    "size_in_mb": 2954.7282695770264,
+                    "docs_per_second": 63.62102145361652,
+                    "cache_loaded": false,
+                    "cache_path": "data/processed/rechtspraken/rechtspraken_beir_ambiguous/linear_rag_cache/snowflake-arctic-embed-l-v2.0-rechtspraken_beir_ambiguous-b4b889790b",
+                    "embedding_model": "snowflake/snowflake-arctic-embed-l-v2.0",
+                    "spacy_model": "nl_core_news_sm",
+                    "backend": "faiss",
+                    "phase_times": {
+                        "model_load_time_in_seconds": 7.763130986015312,
+                        "cache_lookup_time_in_seconds": 0.0034047920489683747,
+                        "bm25_build_time_in_seconds": 1.0294207880506292,
+                        "concept_extraction_time_in_seconds": 270.5766581289936,
+                        "embedding_build_time_in_seconds": 106.1683346600039,
+                        "cache_save_time_in_seconds": 6.499466859968379
+                    }
+                }
+            },
+            "query": {
+                "search": {
+                    "time_in_seconds": 171.42948387307115,
+                    "time_per_query_in_seconds": 0.3028789467722105,
+                    "queries_per_second": 3.3016490933325944,
+                    "queries": 566,
+                    "top_k": 20,
+                    "dense_candidate_k": 500,
+                    "bm25_candidate_k": 500,
+                    "graph_candidate_k": 500,
+                    "dense_rrf_weight": 0.0,
+                    "bm25_rrf_weight": 0.0,
+                    "graph_rrf_weight": 1.0,
+                    "rrf_k": 60,
+                    "total_results": 11320,
+                    "avg_results_per_query": 20.0,
+                    "min_results_per_query": 20,
+                    "max_results_per_query": 20,
+                    "min_score": 0.0125,
+                    "max_score": 0.01639344262295082,
+                    "avg_score": 0.014280443299688935
+                }
+            },
+            "rerank": {
+                "total_queries": 566,
+                "total_pairs": 11320,
+                "total_batches": 1132,
+                "total_input_tokens": 1727457,
+                "total_wall_time_sec": 30.2876,
+                "avg_time_query_sec": 0.0535,
+                "avg_time_batch_sec": 0.0267,
+                "pairs_per_sec": 373.75,
+                "queries_per_sec": 18.69,
+                "tokens_per_sec": 57035.14,
+                "peak_gpu_memory_gb": 4.94
+            }
+        }
+    },
+    "reranker-linear": {
+        "rerank": {
+            "ndcg": {
+                "NDCG@1": 0.74499,
+                "NDCG@3": 0.59195,
+                "NDCG@5": 0.64742,
+                "NDCG@10": 0.67909,
+                "NDCG@20": 0.70398
+            },
+            "map": {
+                "MAP@1": 0.25353,
+                "MAP@3": 0.50785,
+                "MAP@5": 0.56168,
+                "MAP@10": 0.58504,
+                "MAP@20": 0.59593
+            },
+            "recall": {
+                "Recall@1": 0.25353,
+                "Recall@3": 0.54653,
+                "Recall@5": 0.64429,
+                "Recall@10": 0.71496,
+                "Recall@20": 0.78445
+            },
+            "p": {
+                "P@1": 0.75972,
+                "P@3": 0.54594,
+                "P@5": 0.38622,
+                "P@10": 0.21431,
+                "P@20": 0.11758
+            }
+        },
+        "rerank_time": {
+            "total_queries": 566,
+            "total_pairs": 11320,
+            "total_batches": 1132,
+            "total_input_tokens": 1727402,
+            "total_wall_time_sec": 30.6757,
+            "avg_time_query_sec": 0.0542,
+            "avg_time_batch_sec": 0.0271,
+            "pairs_per_sec": 369.02,
+            "tokens_per_sec": 56311.65,
+            "peak_gpu_memory_gb": 4.33,
+            "queries_per_sec": 18.45
+        }
+    },
+    "splade": {
+        "metrics": {
+            "retrieval": {},
+            "rerank": {
+                "ndcg": {
+                    "NDCG@1": 0.56243,
+                    "NDCG@3": 0.41687,
+                    "NDCG@5": 0.43797,
+                    "NDCG@10": 0.4453,
+                    "NDCG@20": 0.44871
+                },
+                "map": {
+                    "MAP@1": 0.19052,
+                    "MAP@3": 0.34629,
+                    "MAP@5": 0.36743,
+                    "MAP@10": 0.37205,
+                    "MAP@20": 0.37369
+                },
+                "recall": {
+                    "Recall@1": 0.19052,
+                    "Recall@3": 0.36985,
+                    "Recall@5": 0.40695,
+                    "Recall@10": 0.42344,
+                    "Recall@20": 0.43286
+                },
+                "p": {
+                    "P@1": 0.57067,
+                    "P@3": 0.36926,
+                    "P@5": 0.24382,
+                    "P@10": 0.12686,
+                    "P@20": 0.06484
+                }
+            }
+        },
+        "timing": {
+            "index": {
+                "indexing": {
+                    "time_in_seconds": 298.35424753604457,
+                    "documents": 25067,
+                    "docs_per_second": 84.01757376345589,
+                    "backend": "elasticsearch",
+                    "model": "sparse-encoder/splade-robbert-dutch-base-v1",
+                    "device": "cuda",
+                    "storage_size_bytes": 174758582,
+                    "storage_size_mb": 166.6627712249756,
+                    "max_features": 1024
+                }
+            },
+            "query": {
+                "search": {
+                    "time_in_seconds": 8.998722885968164,
+                    "time_per_query_in_seconds": 0.01589880368545612,
+                    "queries_per_second": 62.89781418678553,
+                    "queries": 566,
+                    "top_k": 20,
+                    "backend": "elasticsearch",
+                    "model": "sparse-encoder/splade-robbert-dutch-base-v1",
+                    "device": "cuda",
+                    "total_results": 11320,
+                    "avg_results_per_query": 20.0,
+                    "min_results_per_query": 20,
+                    "max_results_per_query": 20,
+                    "min_score": 6.4313827,
+                    "max_score": 25.880661,
+                    "avg_score": 13.041368135335688,
+                    "max_features": 1024
+                }
+            },
+            "rerank": {
+                "total_queries": 566,
+                "total_pairs": 11320,
+                "total_batches": 1132,
+                "total_input_tokens": 1903053,
+                "total_wall_time_sec": 30.8534,
+                "avg_time_query_sec": 0.0545,
+                "avg_time_batch_sec": 0.0272,
+                "pairs_per_sec": 366.9,
+                "queries_per_sec": 18.34,
+                "tokens_per_sec": 61680.49,
+                "peak_gpu_memory_gb": 1.76
+            }
+        }
+    }
+}

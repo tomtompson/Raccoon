@@ -1,0 +1,101 @@
+{"_id": "q0", "text": "how can I split code into separate bundles for better performance"}
+{"_id": "q1", "text": "how can I log errors to a file and also send them to syslog"}
+{"_id": "q2", "text": "how can I log user actions with contextual information"}
+{"_id": "q3", "text": "how can I override validation constraints for a third-party class in Symfony"}
+{"_id": "q4", "text": "how can I validate a single property in a form without validating the entire object"}
+{"_id": "q5", "text": "how can I make my services more interchangeable with other implementations"}
+{"_id": "q6", "text": "how can I limit login attempts to prevent brute force attacks"}
+{"_id": "q7", "text": "how can I log out a user and redirect them to a specific route"}
+{"_id": "q8", "text": "how can I protect forms from CSRF attacks without storing tokens in the session"}
+{"_id": "q9", "text": "how can I protect my login form from CSRF attacks"}
+{"_id": "q10", "text": "how can I secure certain controllers with a token-based authentication system"}
+{"_id": "q11", "text": "how can I handle events across different services in my application"}
+{"_id": "q12", "text": "how can I securely store user passwords in Symfony"}
+{"_id": "q13", "text": "how can I upgrade user passwords to a stronger algorithm when using a custom user provider"}
+{"_id": "q14", "text": "how can I customize how null values are represented in YAML dumps"}
+{"_id": "q15", "text": "how can I handle complex objects when working with YAML in Symfony"}
+{"_id": "q16", "text": "how can I reschedule a message in Symfony's messenger component"}
+{"_id": "q17", "text": "how can I ensure scheduled tasks resume correctly after a worker restart"}
+{"_id": "q18", "text": "how can I handle database migrations during deployment"}
+{"_id": "q19", "text": "how can I optimize the performance of my Symfony application by caching frequently accessed data"}
+{"_id": "q20", "text": "how can I optimize the performance of my Symfony application by reducing the number of locales enabled"}
+{"_id": "q21", "text": "how can I measure the time taken for specific tasks in my Symfony application"}
+{"_id": "q22", "text": "how can I transform incoming webhook payload into domain events"}
+{"_id": "q23", "text": "how can I handle remote events in my Symfony application"}
+{"_id": "q24", "text": "how can I prioritize routes defined with attributes in Symfony"}
+{"_id": "q25", "text": "how can I differentiate between numeric and non-numeric route parameters"}
+{"_id": "q26", "text": "how can I ensure my service container builds are reproducible across different environments"}
+{"_id": "q27", "text": "how can I configure different environments for my Symfony app"}
+{"_id": "q28", "text": "how can I generate unique identifiers for users without collisions"}
+{"_id": "q29", "text": "how can I generate predictable UUIDs for testing purposes"}
+{"_id": "q30", "text": "how can I route messages to different transports based on their type"}
+{"_id": "q31", "text": "how can I ensure a message handler doesn't process the same event multiple times"}
+{"_id": "q32", "text": "how can I handle multiple database connections in a single application"}
+{"_id": "q33", "text": "how can I inject a closure into a service argument"}
+{"_id": "q34", "text": "how can I check for missing or unused translations in my Symfony project"}
+{"_id": "q35", "text": "how can I automatically update translation files when new strings are added"}
+{"_id": "q36", "text": "how can I efficiently manage and load frontend assets in a Symfony project"}
+{"_id": "q37", "text": "how can I integrate a React frontend with a Symfony API"}
+{"_id": "q38", "text": "how can I convert a relative path to an absolute path in Symfony"}
+{"_id": "q39", "text": "how can I find the common base path for a list of file paths"}
+{"_id": "q40", "text": "how can I dynamically update a sidebar with recent articles without reloading the page"}
+{"_id": "q41", "text": "how can I display dynamic content in templates using conditions and loops"}
+{"_id": "q42", "text": "how can I access configuration parameters in a controller"}
+{"_id": "q43", "text": "how can I pass parameters from a URL to a controller method"}
+{"_id": "q44", "text": "how can I configure the MAILER_DSN for Amazon SES with custom port and URL-encoding credentials"}
+{"_id": "q45", "text": "how can I encrypt emails using S/MIME in Symfony"}
+{"_id": "q46", "text": "how can I handle exceptions and display custom error pages in Symfony"}
+{"_id": "q47", "text": "how can I handle events during the request lifecycle in Symfony"}
+{"_id": "q48", "text": "how can I add a custom function to the expression language in Symfony"}
+{"_id": "q49", "text": "how can I modify the expression nodes to change the behavior of a dynamic calculation"}
+{"_id": "q50", "text": "how can I integrate an AI chatbot into my Symfony application"}
+{"_id": "q51", "text": "how can I ensure reliable lock management across multiple servers"}
+{"_id": "q52", "text": "how can I implement distributed locks across multiple Redis servers"}
+{"_id": "q53", "text": "how can I cache specific parts of a webpage efficiently"}
+{"_id": "q54", "text": "how can I invalidate cache when a user profile is updated"}
+{"_id": "q55", "text": "how can I test a controller action that requires user authentication"}
+{"_id": "q56", "text": "how can I assert that a response has a specific header in my tests"}
+{"_id": "q57", "text": "how can I organize my bundle's directory structure for better maintainability"}
+{"_id": "q58", "text": "how can I develop and test a bundle without publishing it first"}
+{"_id": "q59", "text": "how can I get the current user in a controller without using the base controller class"}
+{"_id": "q60", "text": "how can I customize the response after a user successfully logs in"}
+{"_id": "q61", "text": "how can I customize the error page to display additional data"}
+{"_id": "q62", "text": "how can I customize the error messages for different HTTP status codes in Symfony"}
+{"_id": "q63", "text": "how can I handle custom logic after a user successfully logs in"}
+{"_id": "q64", "text": "how can I restrict access to certain URLs based on user roles"}
+{"_id": "q65", "text": "how can I handle network errors when making HTTP requests"}
+{"_id": "q66", "text": "how can I handle network timeouts when making HTTP requests"}
+{"_id": "q67", "text": "how can I handle file uploads in a secure way"}
+{"_id": "q68", "text": "how can I create a route that displays a random number"}
+{"_id": "q69", "text": "how can I log errors from console commands effectively"}
+{"_id": "q70", "text": "how can I test a console command that requires user input"}
+{"_id": "q71", "text": "how can I trigger custom actions when a workflow transition occurs"}
+{"_id": "q72", "text": "how can I restrict a transition based on user roles in a workflow"}
+{"_id": "q73", "text": "how can I dynamically load Stimulus controllers from a PHP package"}
+{"_id": "q74", "text": "how can I dynamically bind JavaScript actions to HTML elements in Symfony templates"}
+{"_id": "q75", "text": "how can I integrate LDAP authentication into my Symfony app"}
+{"_id": "q76", "text": "how can I configure LDAP to fetch user roles based on group membership"}
+{"_id": "q77", "text": "how can I send early hints to improve page load performance"}
+{"_id": "q78", "text": "how can I preload CSS files to improve page load speed"}
+{"_id": "q79", "text": "how can I update an existing entity in Symfony using Doctrine"}
+{"_id": "q80", "text": "how can I structure my entities to represent products in the database"}
+{"_id": "q81", "text": "how can I check for security vulnerabilities in my Symfony project"}
+{"_id": "q82", "text": "how do I set up a production-ready Symfony environment"}
+{"_id": "q83", "text": "how can I automatically determine form field types based on validation constraints"}
+{"_id": "q84", "text": "how can I customize the appearance of form fields in Symfony"}
+{"_id": "q85", "text": "how can I secure different parts of my application with separate authentication methods"}
+{"_id": "q86", "text": "what is the best way to add CSRF protection to a Symfony form"}
+{"_id": "q87", "text": "how can I send desktop notifications to users when a new subscription is made"}
+{"_id": "q88", "text": "how can I send notifications to multiple chat platforms like Slack and Telegram"}
+{"_id": "q89", "text": "how can I store Symfony sessions in Redis for better scalability"}
+{"_id": "q90", "text": "how can I integrate Symfony with an existing legacy application that uses session_start()"}
+{"_id": "q91", "text": "how can I efficiently version and reference static assets in my Symfony app"}
+{"_id": "q92", "text": "how can I organize and manage frontend assets like CSS and JavaScript in a Symfony project"}
+{"_id": "q93", "text": "how can I format dates differently during serialization and deserialization"}
+{"_id": "q94", "text": "how can I ensure all required properties are set during deserialization"}
+{"_id": "q95", "text": "how can I manipulate strings by joining, splitting, truncating, and reversing them"}
+{"_id": "q96", "text": "how can I convert between singular and plural forms of words in my application"}
+{"_id": "q97", "text": "how can I invalidate multiple cache entries at once"}
+{"_id": "q98", "text": "how can I create a custom cache pool with a specific namespace for Redis"}
+{"_id": "q99", "text": "how can I handle form submissions securely in Symfony"}
+{"_id": "q100", "text": "how can I configure multiple bundles in a single file"}

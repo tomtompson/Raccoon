@@ -2095,19 +2095,23 @@ dataloader = [
     { name = "langchain-core" },
     { name = "langchain-text-splitters" },
     { name = "pypdf" },
+    { name = "rich" },
 ]
 dense = [
     { name = "faiss-cpu" },
+    { name = "rich" },
     { name = "sentence-transformers" },
     { name = "torch" },
 ]
 dev = [
     { name = "pytest" },
+    { name = "rich" },
     { name = "ruff" },
 ]
 evaluation = [
     { name = "beir" },
     { name = "datasets" },
+    { name = "rich" },
 ]
 gpu = [
     { name = "cupy-cuda12x" },
@@ -2115,6 +2119,7 @@ gpu = [
 linear = [
     { name = "faiss-cpu" },
     { name = "igraph" },
+    { name = "rich" },
     { name = "sentence-transformers" },
     { name = "spacy" },
     { name = "torch" },
@@ -2123,14 +2128,17 @@ report = [
     { name = "cairocffi" },
     { name = "psutil" },
     { name = "reportlab" },
+    { name = "rich" },
 ]
 rerank = [
+    { name = "rich" },
     { name = "torch" },
     { name = "transformers" },
 ]
 sql = [
     { name = "langchain-core" },
     { name = "langchain-text-splitters" },
+    { name = "rich" },
     { name = "sqlalchemy" },
 ]
 synthesis = [
@@ -2213,6 +2221,14 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "reportlab", marker = "extra == 'report'", specifier = ">=4.5.1" },
     { name = "reportlab", marker = "extra == 'workflow'", specifier = ">=4.5.1" },
+    { name = "rich", marker = "extra == 'dataloader'" },
+    { name = "rich", marker = "extra == 'dense'" },
+    { name = "rich", marker = "extra == 'dev'" },
+    { name = "rich", marker = "extra == 'evaluation'" },
+    { name = "rich", marker = "extra == 'linear'" },
+    { name = "rich", marker = "extra == 'report'" },
+    { name = "rich", marker = "extra == 'rerank'" },
+    { name = "rich", marker = "extra == 'sql'" },
     { name = "rich", marker = "extra == 'synthesis'" },
     { name = "rich", marker = "extra == 'workflow'" },
     { name = "ruff", marker = "extra == 'dev'" },

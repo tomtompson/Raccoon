@@ -1,0 +1,52 @@
+{"_id": "q0", "text": "why is my webpack configuration not minifying the assets"}
+{"_id": "q1", "text": "why are my logs not appearing in the syslog even though the handler is configured"}
+{"_id": "q2", "text": "why are my validation constraints being overridden by the parent class"}
+{"_id": "q3", "text": "why is my service not being injected when using the containerproviderinterface"}
+{"_id": "q4", "text": "why are login attempts not being throttled even after configuring login_throttling"}
+{"_id": "q5", "text": "why are my stateless csrf tokens not being validated correctly behind a reverse proxy"}
+{"_id": "q6", "text": "why is my token validation not working even though the controller is tagged correctly"}
+{"_id": "q7", "text": "why are my hashed passwords not being stored correctly in the database"}
+{"_id": "q8", "text": "why are my null values being dumped as null instead of ~"}
+{"_id": "q9", "text": "why are my messages not being redispatched correctly with RedispatchMessage"}
+{"_id": "q10", "text": "why is my cache not clearing after deployment"}
+{"_id": "q11", "text": "why is my application running slowly even after enabling OPcache"}
+{"_id": "q12", "text": "why is my remote event payload not being converted correctly"}
+{"_id": "q13", "text": "why is my route with a parameter converter not finding the blog post"}
+{"_id": "q14", "text": "why is my container build time changing every time I run the cache clear command"}
+{"_id": "q15", "text": "why is my uid not generating properly in symfony"}
+{"_id": "q16", "text": "why is my message not being routed to the correct transport"}
+{"_id": "q17", "text": "why is my service not being instantiated even though it's tagged"}
+{"_id": "q18", "text": "why is the debug:translation command returning an exit code for missing translations"}
+{"_id": "q19", "text": "why is my stimulus controller not being called when the button is clicked"}
+{"_id": "q20", "text": "why is my path conversion not resolving relative paths correctly"}
+{"_id": "q21", "text": "why is my twig component not updating when the input changes"}
+{"_id": "q22", "text": "why is my request object not containing the form data"}
+{"_id": "q23", "text": "why are my emails not being sent when using the ses+smtp transport with messenger"}
+{"_id": "q24", "text": "why is my error listener not handling exceptions properly"}
+{"_id": "q25", "text": "why is my custom expression function not recognized in Symfony"}
+{"_id": "q26", "text": "why is my agent not responding to user messages"}
+{"_id": "q27", "text": "why are my locks not being released properly with combinedstore"}
+{"_id": "q28", "text": "why is my http cache not respecting the vary header"}
+{"_id": "q29", "text": "why is my application test not reaching the controller endpoint"}
+{"_id": "q30", "text": "why is my bundle not being recognized after enabling it in bundles.php"}
+{"_id": "q31", "text": "why is the current user not being injected into my controller action"}
+{"_id": "q32", "text": "why is my custom error controller not receiving the exception object"}
+{"_id": "q33", "text": "why is my custom authentication success handler not being called"}
+{"_id": "q34", "text": "why is my http client throwing transport exceptions when getting headers"}
+{"_id": "q35", "text": "why is my form not submitting data to the controller"}
+{"_id": "q36", "text": "why is my command not showing the profile link in verbose mode"}
+{"_id": "q37", "text": "why is my workflow transition not triggering the correct events"}
+{"_id": "q38", "text": "why is my stimulus controller not registering even though the controllers.json file is updated"}
+{"_id": "q39", "text": "why is my ldap connection not establishing even though the configuration seems correct"}
+{"_id": "q40", "text": "why are my early hints not being sent even though i used sendearlyhints"}
+{"_id": "q41", "text": "why is my doctrine entity not updating in the database"}
+{"_id": "q42", "text": "why is the symfony check:security command not detecting any vulnerabilities even though i know some dependencies are outdated"}
+{"_id": "q43", "text": "why is my form field not being mapped correctly even though it's defined in the form"}
+{"_id": "q44", "text": "why is my firewall not matching the correct routes in security.yaml"}
+{"_id": "q45", "text": "why is my desktop notification not showing up even though the configuration looks correct"}
+{"_id": "q46", "text": "why is my redis session handler not working in symfony"}
+{"_id": "q47", "text": "why are my assets not being versioned correctly in production"}
+{"_id": "q48", "text": "why is my serializer not applying the correct date format for normalization"}
+{"_id": "q49", "text": "why is my string not splitting correctly on the delimiter"}
+{"_id": "q50", "text": "why is my cache chain not storing items in all pools"}
+{"_id": "q51", "text": "why are my custom validation constraints not being triggered"}
