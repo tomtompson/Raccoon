@@ -24,6 +24,13 @@ dense = [
     "torch>=2.10.0",
     "rich",
 ]
+chroma = [
+    "chromadb>=1.5.9,<2",
+    "sentence-transformers>=5.3.0",
+    "testcontainers>=4.14.2",
+    "torch>=2.10.0",
+    "rich",
+]
 dev = [
     "pytest",
     "ruff",
@@ -77,6 +84,7 @@ synthesis = [
 ]
 workflow = [
     "beir",
+    "chromadb>=1.5.9,<2",
     "datasets>=4.7.0",
     "docx2txt>=0.9",
     "elasticsearch<9",
