@@ -65,19 +65,19 @@
         "timing": {
             "index": {
                 "indexing": {
-                    "time_in_seconds": 45.49934750702232,
+                    "time_in_seconds": 28.73264839500189,
                     "documents": 25067,
-                    "docs_per_second": 550.9309775515173,
+                    "docs_per_second": 872.4221887029552,
                     "backend": "elasticsearch",
-                    "storage_size_bytes": 23685261,
-                    "storage_size_mb": 22.588025093078613
+                    "storage_size_bytes": 18303795,
+                    "storage_size_mb": 17.455859184265137
                 }
             },
             "query": {
                 "search": {
-                    "time_in_seconds": 4.43315504596103,
-                    "time_per_query_in_seconds": 0.007832429409825141,
-                    "queries_per_second": 127.67430737972332,
+                    "time_in_seconds": 4.301069507841021,
+                    "time_per_query_in_seconds": 0.00759906273470145,
+                    "queries_per_second": 131.59517626212724,
                     "queries": 566,
                     "top_k": 20,
                     "backend": "elasticsearch",
@@ -95,12 +95,12 @@
                 "total_pairs": 11320,
                 "total_batches": 1132,
                 "total_input_tokens": 2358552,
-                "total_wall_time_sec": 39.2588,
-                "avg_time_query_sec": 0.0693,
-                "avg_time_batch_sec": 0.0346,
-                "pairs_per_sec": 288.34,
-                "queries_per_sec": 14.42,
-                "tokens_per_sec": 60076.97,
+                "total_wall_time_sec": 36.7278,
+                "avg_time_query_sec": 0.0649,
+                "avg_time_batch_sec": 0.0324,
+                "pairs_per_sec": 308.21,
+                "queries_per_sec": 15.41,
+                "tokens_per_sec": 64217.16,
                 "peak_gpu_memory_gb": 1.17
             }
         }
@@ -171,21 +171,21 @@
         "timing": {
             "index": {
                 "encoding": {
-                    "time_in_seconds": 0.019709521904587746,
+                    "time_in_seconds": 212.86274595698342,
                     "documents": 25067,
                     "queries": 566,
                     "shards": 1,
                     "embedding_dim": 1024,
                     "size_in_bytes": 105974749,
                     "size_in_mb": 101.06539630889893,
-                    "docs_per_second": 1271821.8189841127
+                    "docs_per_second": 117.76132966482398
                 }
             },
             "query": {
                 "search": {
-                    "time_in_seconds": 0.3374444580404088,
-                    "time_per_query_in_seconds": 0.0005961916219795209,
-                    "queries_per_second": 1677.3130703845247,
+                    "time_in_seconds": 0.17486586514860392,
+                    "time_per_query_in_seconds": 0.00030895029178198573,
+                    "queries_per_second": 3236.766646932515,
                     "queries": 566,
                     "top_k": 20,
                     "score_function": "dot",
@@ -205,13 +205,13 @@
                 "total_pairs": 11320,
                 "total_batches": 1132,
                 "total_input_tokens": 2178643,
-                "total_wall_time_sec": 37.9075,
-                "avg_time_query_sec": 0.0669,
-                "avg_time_batch_sec": 0.0334,
-                "pairs_per_sec": 298.62,
-                "queries_per_sec": 14.93,
-                "tokens_per_sec": 57472.65,
-                "peak_gpu_memory_gb": 3.28
+                "total_wall_time_sec": 35.2409,
+                "avg_time_query_sec": 0.0622,
+                "avg_time_batch_sec": 0.0311,
+                "pairs_per_sec": 321.22,
+                "queries_per_sec": 16.06,
+                "tokens_per_sec": 61821.38,
+                "peak_gpu_memory_gb": 3.89
             }
         }
     },
@@ -281,58 +281,58 @@
         "timing": {
             "index": {
                 "indexing": {
-                    "time_in_seconds": 45.51905702892691,
+                    "time_in_seconds": 241.5953943519853,
                     "documents": 50134,
-                    "docs_per_second": 1101.3848544388857,
+                    "docs_per_second": 207.51223397478654,
                     "retrievers": 2,
                     "child_retrievers": [
                         {
                             "retriever": "BM25Retriever",
                             "weight": 0.3,
                             "phase": "indexing",
-                            "time_in_seconds": 45.49934750702232,
+                            "time_in_seconds": 28.73264839500189,
                             "documents": 25067,
-                            "docs_per_second": 550.9309775515173,
+                            "docs_per_second": 872.4221887029552,
                             "details": {
-                                "time_in_seconds": 45.49934750702232,
+                                "time_in_seconds": 28.73264839500189,
                                 "documents": 25067,
-                                "docs_per_second": 550.9309775515173,
+                                "docs_per_second": 872.4221887029552,
                                 "backend": "elasticsearch",
-                                "storage_size_bytes": 23685261,
-                                "storage_size_mb": 22.588025093078613
+                                "storage_size_bytes": 18303795,
+                                "storage_size_mb": 17.455859184265137
                             }
                         },
                         {
                             "retriever": "DenseRetrieverSentenceBert",
                             "weight": 0.7,
                             "phase": "encoding",
-                            "time_in_seconds": 0.019709521904587746,
+                            "time_in_seconds": 212.86274595698342,
                             "documents": 25067,
-                            "docs_per_second": 1271821.8189841127,
+                            "docs_per_second": 117.76132966482398,
                             "details": {
-                                "time_in_seconds": 0.019709521904587746,
+                                "time_in_seconds": 212.86274595698342,
                                 "documents": 25067,
                                 "queries": 566,
                                 "shards": 1,
                                 "embedding_dim": 1024,
                                 "size_in_bytes": 105974749,
                                 "size_in_mb": 101.06539630889893,
-                                "docs_per_second": 1271821.8189841127
+                                "docs_per_second": 117.76132966482398
                             }
                         }
                     ],
-                    "size_in_mb": 123.65342140197754
+                    "size_in_mb": 118.52125549316406
                 }
             },
             "query": {
                 "search": {
-                    "time_in_seconds": 4.780582602950744,
-                    "retriever_time_in_seconds": 4.770599504001439,
-                    "rrf_time_in_seconds": 0.009983098949305713,
-                    "wrapper_time_in_seconds": 0.010754922055639327,
+                    "time_in_seconds": 4.4893133961595595,
+                    "retriever_time_in_seconds": 4.475935372989625,
+                    "rrf_time_in_seconds": 0.01337802316993475,
+                    "wrapper_time_in_seconds": 0.014181446051225066,
                     "execution_mode": "sequential",
-                    "time_per_query_in_seconds": 0.008446259015814035,
-                    "queries_per_second": 118.39561137394526,
+                    "time_per_query_in_seconds": 0.007931649109822544,
+                    "queries_per_second": 126.0771859866571,
                     "queries": 566,
                     "top_k": 20,
                     "retrievers": 2,
@@ -341,16 +341,16 @@
                         {
                             "retriever": "BM25Retriever",
                             "weight": 0.3,
-                            "time_in_seconds": 4.43315504596103,
+                            "time_in_seconds": 4.301069507841021,
                             "queries": 566,
-                            "avg_time_per_query": 0.007832429409825141
+                            "avg_time_per_query": 0.00759906273470145
                         },
                         {
                             "retriever": "DenseRetrieverSentenceBert",
                             "weight": 0.7,
-                            "time_in_seconds": 0.3374444580404088,
+                            "time_in_seconds": 0.17486586514860392,
                             "queries": 566,
-                            "avg_time_per_query": 0.0005961916219795209
+                            "avg_time_per_query": 0.00030895029178198573
                         }
                     ],
                     "total_results": 11320,
@@ -367,13 +367,13 @@
                 "total_pairs": 11320,
                 "total_batches": 1132,
                 "total_input_tokens": 2178643,
-                "total_wall_time_sec": 37.4149,
-                "avg_time_query_sec": 0.0661,
-                "avg_time_batch_sec": 0.033,
-                "pairs_per_sec": 302.55,
-                "queries_per_sec": 15.13,
-                "tokens_per_sec": 58229.32,
-                "peak_gpu_memory_gb": 3.28
+                "total_wall_time_sec": 35.1044,
+                "avg_time_query_sec": 0.062,
+                "avg_time_batch_sec": 0.031,
+                "pairs_per_sec": 322.47,
+                "queries_per_sec": 16.12,
+                "tokens_per_sec": 62061.79,
+                "peak_gpu_memory_gb": 3.89
             }
         }
     },
@@ -382,39 +382,39 @@
             "retrieval": {},
             "rerank": {
                 "ndcg": {
-                    "NDCG@1": 0.6914,
-                    "NDCG@3": 0.53675,
-                    "NDCG@5": 0.58337,
-                    "NDCG@10": 0.61623,
-                    "NDCG@20": 0.62835
+                    "NDCG@1": 0.68963,
+                    "NDCG@3": 0.53719,
+                    "NDCG@5": 0.5835,
+                    "NDCG@10": 0.61661,
+                    "NDCG@20": 0.62874
                 },
                 "map": {
-                    "MAP@1": 0.2394,
-                    "MAP@3": 0.44847,
-                    "MAP@5": 0.49296,
-                    "MAP@10": 0.51609,
-                    "MAP@20": 0.52159
+                    "MAP@1": 0.23881,
+                    "MAP@3": 0.44876,
+                    "MAP@5": 0.49302,
+                    "MAP@10": 0.5163,
+                    "MAP@20": 0.52179
                 },
                 "recall": {
-                    "Recall@1": 0.2394,
-                    "Recall@3": 0.48999,
-                    "Recall@5": 0.57303,
-                    "Recall@10": 0.64605,
-                    "Recall@20": 0.67845
+                    "Recall@1": 0.23881,
+                    "Recall@3": 0.49117,
+                    "Recall@5": 0.57362,
+                    "Recall@10": 0.64723,
+                    "Recall@20": 0.67962
                 },
                 "p": {
-                    "P@1": 0.71731,
-                    "P@3": 0.4894,
-                    "P@5": 0.34346,
-                    "P@10": 0.19364,
-                    "P@20": 0.10168
+                    "P@1": 0.71555,
+                    "P@3": 0.49058,
+                    "P@5": 0.34382,
+                    "P@10": 0.19399,
+                    "P@20": 0.10186
                 }
             }
         },
         "timing": {
             "index": {
                 "indexing": {
-                    "time_in_seconds": 243.76453847892117,
+                    "time_in_seconds": 436.3857992568519,
                     "documents": 25067,
                     "concepts": 38182,
                     "sentences": 104496,
@@ -424,29 +424,29 @@
                     "concept_sentence_links": 832798,
                     "sentence_passage_links": 152776,
                     "embedding_dim": 1024,
-                    "size_in_bytes": 3098257229,
-                    "size_in_mb": 2954.7283449172974,
-                    "docs_per_second": 102.83284088988849,
+                    "size_in_bytes": 3098257129,
+                    "size_in_mb": 2954.7282495498657,
+                    "docs_per_second": 57.442290841471305,
                     "cache_loaded": false,
                     "cache_path": "data/processed/rechtspraken/rechtspraken_beir_semantic/linear_rag_cache/snowflake-arctic-embed-l-v2.0-rechtspraken_beir_semantic-276b151399",
                     "embedding_model": "snowflake/snowflake-arctic-embed-l-v2.0",
                     "spacy_model": "nl_core_news_sm",
                     "backend": "faiss",
                     "phase_times": {
-                        "model_load_time_in_seconds": 8.483316864003427,
-                        "cache_lookup_time_in_seconds": 0.0038127960870042443,
-                        "bm25_build_time_in_seconds": 1.3416778120445088,
-                        "concept_extraction_time_in_seconds": 101.48132332402747,
-                        "embedding_build_time_in_seconds": 122.36827763495967,
-                        "cache_save_time_in_seconds": 7.502025948022492
+                        "model_load_time_in_seconds": 7.958774270955473,
+                        "cache_lookup_time_in_seconds": 0.004288763040676713,
+                        "bm25_build_time_in_seconds": 1.1848837421275675,
+                        "concept_extraction_time_in_seconds": 309.7271751970984,
+                        "embedding_build_time_in_seconds": 108.46061199787073,
+                        "cache_save_time_in_seconds": 6.820619654143229
                     }
                 }
             },
             "query": {
                 "search": {
-                    "time_in_seconds": 522.2883148769615,
-                    "time_per_query_in_seconds": 0.9227708743409214,
-                    "queries_per_second": 1.0836926346578055,
+                    "time_in_seconds": 426.9157666009851,
+                    "time_per_query_in_seconds": 0.7542681388709984,
+                    "queries_per_second": 1.3257884676089027,
                     "queries": 566,
                     "top_k": 20,
                     "dense_candidate_k": 500,
@@ -469,14 +469,97 @@
                 "total_queries": 566,
                 "total_pairs": 11320,
                 "total_batches": 1132,
-                "total_input_tokens": 2278447,
-                "total_wall_time_sec": 51.8689,
-                "avg_time_query_sec": 0.0916,
-                "avg_time_batch_sec": 0.0458,
-                "pairs_per_sec": 218.24,
-                "queries_per_sec": 10.91,
-                "tokens_per_sec": 43927.05,
-                "peak_gpu_memory_gb": 4.34
+                "total_input_tokens": 2278885,
+                "total_wall_time_sec": 36.1814,
+                "avg_time_query_sec": 0.0639,
+                "avg_time_batch_sec": 0.0319,
+                "pairs_per_sec": 312.87,
+                "queries_per_sec": 15.64,
+                "tokens_per_sec": 62985.03,
+                "peak_gpu_memory_gb": 4.95
+            }
+        }
+    },
+    "splade": {
+        "metrics": {
+            "retrieval": {},
+            "rerank": {
+                "ndcg": {
+                    "NDCG@1": 0.55241,
+                    "NDCG@3": 0.37246,
+                    "NDCG@5": 0.3923,
+                    "NDCG@10": 0.40017,
+                    "NDCG@20": 0.40367
+                },
+                "map": {
+                    "MAP@1": 0.19111,
+                    "MAP@3": 0.30212,
+                    "MAP@5": 0.32073,
+                    "MAP@10": 0.32537,
+                    "MAP@20": 0.32669
+                },
+                "recall": {
+                    "Recall@1": 0.19111,
+                    "Recall@3": 0.31625,
+                    "Recall@5": 0.3513,
+                    "Recall@10": 0.36837,
+                    "Recall@20": 0.3778
+                },
+                "p": {
+                    "P@1": 0.57244,
+                    "P@3": 0.31567,
+                    "P@5": 0.21025,
+                    "P@10": 0.11025,
+                    "P@20": 0.05654
+                }
+            }
+        },
+        "timing": {
+            "index": {
+                "indexing": {
+                    "time_in_seconds": 316.3003083630465,
+                    "documents": 25067,
+                    "docs_per_second": 79.25063408799569,
+                    "backend": "elasticsearch",
+                    "model": "sparse-encoder/splade-robbert-dutch-base-v1",
+                    "device": "cuda",
+                    "storage_size_bytes": 174758582,
+                    "storage_size_mb": 166.6627712249756,
+                    "max_features": 1024
+                }
+            },
+            "query": {
+                "search": {
+                    "time_in_seconds": 14.685860851081088,
+                    "time_per_query_in_seconds": 0.02594675062028461,
+                    "queries_per_second": 38.54047139213731,
+                    "queries": 566,
+                    "top_k": 20,
+                    "backend": "elasticsearch",
+                    "model": "sparse-encoder/splade-robbert-dutch-base-v1",
+                    "device": "cuda",
+                    "total_results": 11320,
+                    "avg_results_per_query": 20.0,
+                    "min_results_per_query": 20,
+                    "max_results_per_query": 20,
+                    "min_score": 7.008433,
+                    "max_score": 38.961727,
+                    "avg_score": 16.22648582929329,
+                    "max_features": 1024
+                }
+            },
+            "rerank": {
+                "total_queries": 566,
+                "total_pairs": 11320,
+                "total_batches": 1132,
+                "total_input_tokens": 2331635,
+                "total_wall_time_sec": 34.8334,
+                "avg_time_query_sec": 0.0615,
+                "avg_time_batch_sec": 0.0307,
+                "pairs_per_sec": 324.98,
+                "queries_per_sec": 16.25,
+                "tokens_per_sec": 66936.77,
+                "peak_gpu_memory_gb": 1.77
             }
         }
     }
