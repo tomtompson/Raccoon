@@ -66,19 +66,33 @@ class DenseRetrieverSentenceBert(BaseRetriever):
         prompts = None
         if query_prompt_name and passage_prompt_name:
             prompts = {"query": query_prompt_name, "passage": passage_prompt_name}
+        self._model_prompts = prompts
+        self.sentence_model: SentenceTransformer | None = None
 
-        log.info("Loading dense retriever model=%s device=%s", model_id, device or "auto")
+        self._load_model()
+
+    def _load_model(self) -> None:
+        if self.sentence_model is not None:
+            return
+        log.info("Loading dense retriever model=%s device=%s", self.model_id, self.device or "auto")
         self.sentence_model = SentenceTransformer(
-            model_name_or_path=model_id,
+            model_name_or_path=self.model_id,
             trust_remote_code=True,
-            device=device,
-            prompts=prompts,
+            device=self.device,
+            prompts=self._model_prompts,
         )
-        if max_length is not None:
-            self.sentence_model.max_seq_length = max_length
+        if self.max_length is not None:
+            self.sentence_model.max_seq_length = self.max_length
         self.max_length = getattr(self.sentence_model, "max_seq_length", self.max_length)
-        self.device = str(device or getattr(self.sentence_model, "device", ""))
+        self.device = str(self.device or getattr(self.sentence_model, "device", ""))
         log.info("Loaded dense retriever model on device=%s max_length=%s", self.device, self.max_length)
+
+    def _unload_model(self) -> None:
+        if self.sentence_model is None:
+            return
+        self.sentence_model = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     @staticmethod
     def _sorted_corpus(corpus: dict[str, dict[str, Any]]) -> tuple[list[str], list[dict[str, Any]]]:
@@ -120,6 +134,7 @@ class DenseRetrieverSentenceBert(BaseRetriever):
         corpus_filename: str = "corpus.*.pkl",
         **kwargs,
     ) -> dict[str, Any]:
+        self._load_model()
         corpus = corpus or self.corpus
         queries = queries or self.queries
         if not queries:
@@ -178,7 +193,13 @@ class DenseRetrieverSentenceBert(BaseRetriever):
             "corpus_embeddings_files": self._resolve_corpus_files(encode_output_path, corpus_filename),
         }
 
-    def search(
+    def search(self, *args, **kwargs) -> dict[str, dict[str, float]]:
+        try:
+            return self._search(*args, **kwargs)
+        finally:
+            self._unload_model()
+
+    def _search(
         self,
         top_k: int | None = None,
         score_function: str = "dot",

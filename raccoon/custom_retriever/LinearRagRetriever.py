@@ -294,7 +294,14 @@ class LinearRagRetriever(BaseRetriever):
         }
 
 
-    def search(self, top_k: int, *args, **kwargs) -> dict:
+    def search(self, *args, **kwargs) -> dict:
+        self._load_embedding_model()
+        try:
+            return self._search(*args, **kwargs)
+        finally:
+            self._unload_embedding_model()
+
+    def _search(self, top_k: int, *args, **kwargs) -> dict:
         search_start = time.perf_counter()
         results = {}
         items = list(self.queries.items())
@@ -700,8 +707,12 @@ class LinearRagRetriever(BaseRetriever):
 
     def _unload_embedding_model(self):
         if self.embedding_model is not None:
-            del self.embedding_model
+            for store in (self.passage_store, self.concept_store, self.sentence_store):
+                if store is not None and getattr(store, "model", None) is self.embedding_model:
+                    store.model = None
             self.embedding_model = None
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
     def _get_cache_path(self):
         dataset_name = self.config.get("dataset_name", "default_dataset")

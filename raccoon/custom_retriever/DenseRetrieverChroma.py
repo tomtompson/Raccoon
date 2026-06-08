@@ -90,27 +90,10 @@ class DenseRetrieverChroma(BaseRetriever):
         self._last_collection_setup_latency = 0.0
 
         model_load_start = perf_counter()
-        if sentence_model is None:
-            try:
-                from sentence_transformers import SentenceTransformer
-            except ImportError as exc:
-                raise RuntimeError(
-                    "sentence-transformers is required; install the 'chroma' optional dependency"
-                ) from exc
-
-            log.info("Loading Chroma dense retriever model=%s device=%s", model_id, device or "auto")
-            sentence_model = SentenceTransformer(
-                model_name_or_path=model_id,
-                trust_remote_code=True,
-                device=device,
-            )
         self.sentence_model = sentence_model
+        self._owns_sentence_model = sentence_model is None
+        self._load_model()
         self._model_load_latency = perf_counter() - model_load_start
-
-        if max_length is not None:
-            self.sentence_model.max_seq_length = max_length
-        self.max_length = getattr(self.sentence_model, "max_seq_length", self.max_length)
-        self.device = str(device or getattr(self.sentence_model, "device", ""))
 
         client_start = perf_counter()
         if chroma_client is None:
@@ -144,6 +127,37 @@ class DenseRetrieverChroma(BaseRetriever):
                 "ssl": self.chroma_ssl,
             },
         }
+
+    def _load_model(self) -> None:
+        if self.sentence_model is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError as exc:
+                raise RuntimeError(
+                    "sentence-transformers is required; install the 'chroma' optional dependency"
+                ) from exc
+
+            log.info("Loading Chroma dense retriever model=%s device=%s", self.model_id, self.device or "auto")
+            self.sentence_model = SentenceTransformer(
+                model_name_or_path=self.model_id,
+                trust_remote_code=True,
+                device=self.device,
+            )
+        if self.max_length is not None:
+            self.sentence_model.max_seq_length = self.max_length
+        self.max_length = getattr(self.sentence_model, "max_seq_length", self.max_length)
+        self.device = str(self.device or getattr(self.sentence_model, "device", ""))
+
+    def _unload_model(self) -> None:
+        if not self._owns_sentence_model:
+            return
+        self.sentence_model = None
+        try:
+            import torch
+        except ImportError:
+            return
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     @staticmethod
     def _batches(values: Iterable[T], size: int) -> Iterator[list[T]]:
@@ -179,6 +193,7 @@ class DenseRetrieverChroma(BaseRetriever):
         return [[float(value) for value in embedding] for embedding in embeddings]
 
     def encode(self, texts: Sequence[str], prompt_name: str | None = None) -> list[list[float]]:
+        self._load_model()
         encode_kwargs: dict[str, Any] = {
             "batch_size": self.batch_size,
             "show_progress_bar": self.show_progress_bar,
@@ -348,7 +363,13 @@ class DenseRetrieverChroma(BaseRetriever):
             raise RuntimeError("Chroma collection was not initialized")
         return int(self.collection.count())
 
-    def search(
+    def search(self, *args: Any, **kwargs: Any) -> dict[str, dict[str, float]]:
+        try:
+            return self._search(*args, **kwargs)
+        finally:
+            self._unload_model()
+
+    def _search(
         self,
         top_k: int | None = None,
         queries: dict[str, str] | None = None,

@@ -83,9 +83,22 @@ class SpladeRetriever(BaseRetriever):
             )
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.model = None
+        self._load_model()
+
+    def _load_model(self) -> None:
+        if self.model is not None:
+            return
         self.model = AutoModelForMaskedLM.from_pretrained(self.model_name)
         self.model.to(self.device)
         self.model.eval()
+
+    def _unload_model(self) -> None:
+        if self.model is None:
+            return
+        self.model = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def create_index(self, *args, **kwargs) -> None:
         if not self.client:
@@ -122,6 +135,7 @@ class SpladeRetriever(BaseRetriever):
             ) from exc
 
     def encode(self, texts: list[str]) -> list[dict[str, float]]:
+        self._load_model()
         encoded_vectors: list[dict[str, float]] = []
 
         for start in range(0, len(texts), self.batch_size):
@@ -282,7 +296,13 @@ class SpladeRetriever(BaseRetriever):
             },
         }
 
-    def search(self, top_k: int | None = None, *args, **kwargs) -> dict:
+    def search(self, *args, **kwargs) -> dict:
+        try:
+            return self._search(*args, **kwargs)
+        finally:
+            self._unload_model()
+
+    def _search(self, top_k: int | None = None, *args, **kwargs) -> dict:
         if not self.client:
             raise ValueError("Elasticsearch client is not initialized.")
         if not self.index_name:
@@ -410,6 +430,5 @@ class SpladeRetriever(BaseRetriever):
         )
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self.model = AutoModelForMaskedLM.from_pretrained(self.model_name)
-        self.model.to(self.device)
-        self.model.eval()
+        self.model = None
+        self._load_model()
