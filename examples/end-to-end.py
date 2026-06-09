@@ -1,4 +1,5 @@
 from raccoon.custom_retriever.DenseRetriever import DenseRetrieverSentenceBert
+from raccoon.custom_retriever.DenseRetrieverChroma import DenseRetrieverChroma
 from raccoon.custom_retriever.HybridRetriever import HybridRetriever
 from raccoon.custom_retriever.LinearRagRetriever import LinearRagRetriever
 from raccoon.report.StaticRetrieverReport import StaticRetrieverReport
@@ -12,8 +13,10 @@ from raccoon.custom_retriever.util.utils import append_results
 from raccoon.custom_retriever.reranker.CrossEncoderReranker import CrossEncoderReranker 
 
 from testcontainers.elasticsearch import ElasticSearchContainer
+from testcontainers.core.container import DockerContainer
 from beir.retrieval.evaluation import EvaluateRetrieval
 import torch
+from time import sleep
 
 
 SOURCE_PATH_RAW = Path("data/raw/rechtspraken")
@@ -22,18 +25,21 @@ OUTPUT_PATH_CHUNKS = Path("data/processed/rechtspraken_chunks")
 RERANKER_ID = "BAAI/bge-reranker-v2-m3"
 SPLADE_MODEL_NAME = "sparse-encoder/splade-robbert-dutch-base-v1"
 
-QUERY_PROMPT_PATH = "prompts/example_rechtspraak/query_scenarios/query_generation_semantic.txt"
+QUERY_PROMPT_PATH = "prompts/example_rechtspraak/query_scenarios/query_generation_ambiguous.txt"
 QUERY_VALIDATION_PATH = "prompts/example_rechtspraak/query_validation.txt"
 CANDIDATE_JUDGING_PATH = "prompts/example_rechtspraak/candidate_judging.txt"
 DISTRIBUTION_VALIDATION_PATH = "prompts/example_rechtspraak/distribution_validation.txt"
 
 
-OUTPUT_PATH_SYNTH = Path("data/processed/rechtspraken/rechtspraken_beir_semantic")
+OUTPUT_PATH_SYNTH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous")
 
-RESULT_FILE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_semantic/eval_results.json")
+RESULT_FILE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous/eval_results.json")
 
 
 ELASTIC_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:8.13.4"
+CHROMA_IMAGE = "chromadb/chroma:1.5.9"
+CHROMA_PORT = 8000
+COLLECTION_NAME = "raccoon-dense-test"
 
 
 TOP_K = 20
@@ -42,13 +48,13 @@ MAX_LENGTH = 512
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 QUERY_PROMPT_NAME = "query"
 PASSAGE_PROMPT_NAME = "document"
-ENCODE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_semantic/encode/")
-LINEAR_CACHE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_semantic/linear_rag_cache")
+ENCODE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous/encode/")
+LINEAR_CACHE_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_ambiguous/linear_rag_cache")
 
 RETRIEVERS = []
 
 
-PDF_PATH = Path("data/processed/rechtspraken/report_semantic.pdf")
+PDF_PATH = Path("data/processed/rechtspraken/report_ambiguous.pdf")
 
 
 def main() -> None:
@@ -219,37 +225,50 @@ def main() -> None:
 
         RETRIEVERS.append(retriever_splade)
     #======================================================
-    # Dense Retrieval and evaluation
+    # Dense Retrieval and evaluation with chroma db
     #======================================================
 
-    retriever_dense = DenseRetrieverSentenceBert(corpus=corpus, 
-                                           queries=queries,
-                                           model_id=MODEL_ID,
-                                           max_length=MAX_LENGTH,
-                                           device=DEVICE,
-                                           query_prompt_name=QUERY_PROMPT_NAME,
-                                           passage_prompt_name=PASSAGE_PROMPT_NAME,
-                                           reranker=reranker,)
-    retriever_dense.search(top_k=TOP_K, 
-                     encode_output_path= ENCODE_PATH,
-                     )
-    eval = EvaluateRetrieval()
-    eval_results = eval.evaluate(qrels=qrels, results=retriever_dense.results, k_values=[1, 3, 5, 10, 20],)
-    retriever_dense.add_retrieval_result(eval_results)
+    with DockerContainer(CHROMA_IMAGE).with_exposed_ports(CHROMA_PORT) as container:
+        chroma_host = container.get_container_host_ip()
+        chroma_port = int(container.get_exposed_port(CHROMA_PORT))
+        sleep(20)
+
+        retriever_dense = DenseRetrieverChroma(
+            chroma_host=chroma_host,
+            chroma_port=chroma_port,
+            collection_name=COLLECTION_NAME,
+            corpus=corpus,
+            queries=queries,
+            model_id=MODEL_ID,
+            normalize_embeddings=True,
+            topk=TOP_K,
+            reranker=reranker,
+        )
+
+        retriever_dense.index_corpus()
+        retriever_dense.search()
+
+        evaluation = EvaluateRetrieval()
+        evaluation_results = evaluation.evaluate(
+            qrels=qrels,
+            results=retriever_dense.results,
+            k_values=[1, 3, 5, 10, 20],
+        )
+        retriever_dense.add_retrieval_result(evaluation_results)
+        
+        eval_results = eval.evaluate(qrels=qrels, results=retriever_dense.rerank_results, k_values=[1, 3, 5, 10, 20],)
+        retriever_dense.add_rerank_retrieval_result(eval_results)
+        append_results(
+        RESULT_FILE_PATH,
+        retriever_dense.retriever_type,
+        retriever_dense.retrieval_metrics,
+        retriever_dense.metrics,
+        {
+            "rerank_time": retriever_dense.rerank_metrics,
+        },
+        )
     
-    eval_results = eval.evaluate(qrels=qrels, results=retriever_dense.rerank_results, k_values=[1, 3, 5, 10, 20],)
-    retriever_dense.add_rerank_retrieval_result(eval_results)
-    append_results(
-    RESULT_FILE_PATH,
-    retriever_dense.retriever_type,
-    retriever_dense.retrieval_metrics,
-    retriever_dense.metrics,
-    {
-        "rerank_time": retriever_dense.rerank_metrics,
-    },
-    )
-    
-    RETRIEVERS.append(retriever_dense)
+        RETRIEVERS.append(retriever_dense)
 
     #======================================================
     # Hybrid Retrieval and evaluation

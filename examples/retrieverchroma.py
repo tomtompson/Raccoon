@@ -16,7 +16,7 @@ INPUT_PATH = Path("data/processed/rechtspraken/rechtspraken_beir_semantic")
 CHROMA_IMAGE = "chromadb/chroma:1.5.9"
 CHROMA_PORT = 8000
 COLLECTION_NAME = "raccoon-dense-test"
-MODEL_ID = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+MODEL_ID = "snowflake/snowflake-arctic-embed-l-v2.0"
 TOP_K = 20
 
 

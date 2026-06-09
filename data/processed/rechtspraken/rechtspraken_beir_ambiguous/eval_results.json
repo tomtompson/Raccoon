@@ -7,77 +7,77 @@
                     "NDCG@3": 0.26945,
                     "NDCG@5": 0.32034,
                     "NDCG@10": 0.38544,
-                    "NDCG@20": 0.4279
+                    "NDCG@20": 0.42809
                 },
                 "map": {
                     "MAP@1": 0.11278,
                     "MAP@3": 0.20338,
                     "MAP@5": 0.24074,
                     "MAP@10": 0.27877,
-                    "MAP@20": 0.29596
+                    "MAP@20": 0.29605
                 },
                 "recall": {
                     "Recall@1": 0.11278,
                     "Recall@3": 0.25147,
                     "Recall@5": 0.34158,
                     "Recall@10": 0.48587,
-                    "Recall@20": 0.6066
+                    "Recall@20": 0.60718
                 },
                 "p": {
                     "P@1": 0.33746,
                     "P@3": 0.25088,
                     "P@5": 0.20459,
                     "P@10": 0.14558,
-                    "P@20": 0.0909
+                    "P@20": 0.09099
                 }
             },
             "rerank": {
                 "ndcg": {
                     "NDCG@1": 0.68669,
                     "NDCG@3": 0.52135,
-                    "NDCG@5": 0.55084,
-                    "NDCG@10": 0.56804,
-                    "NDCG@20": 0.58389
+                    "NDCG@5": 0.55112,
+                    "NDCG@10": 0.56831,
+                    "NDCG@20": 0.58415
                 },
                 "map": {
                     "MAP@1": 0.23469,
                     "MAP@3": 0.44022,
-                    "MAP@5": 0.47044,
-                    "MAP@10": 0.48143,
-                    "MAP@20": 0.48817
+                    "MAP@5": 0.47061,
+                    "MAP@10": 0.48167,
+                    "MAP@20": 0.48841
                 },
                 "recall": {
                     "Recall@1": 0.23469,
                     "Recall@3": 0.47232,
-                    "Recall@5": 0.52473,
-                    "Recall@10": 0.5636,
-                    "Recall@20": 0.6066
+                    "Recall@5": 0.52532,
+                    "Recall@10": 0.56419,
+                    "Recall@20": 0.60718
                 },
                 "p": {
                     "P@1": 0.70318,
                     "P@3": 0.47173,
-                    "P@5": 0.31449,
-                    "P@10": 0.1689,
-                    "P@20": 0.0909
+                    "P@5": 0.31484,
+                    "P@10": 0.16908,
+                    "P@20": 0.09099
                 }
             }
         },
         "timing": {
             "index": {
                 "indexing": {
-                    "time_in_seconds": 25.474081170046702,
+                    "time_in_seconds": 22.936224400997162,
                     "documents": 25067,
-                    "docs_per_second": 984.0197898668329,
+                    "docs_per_second": 1092.9000153534512,
                     "backend": "elasticsearch",
-                    "storage_size_bytes": 18114413,
-                    "storage_size_mb": 17.27525043487549
+                    "storage_size_bytes": 17958175,
+                    "storage_size_mb": 17.12625026702881
                 }
             },
             "query": {
                 "search": {
-                    "time_in_seconds": 1.8489078419515863,
-                    "time_per_query_in_seconds": 0.0032666216288897284,
-                    "queries_per_second": 306.126669570814,
+                    "time_in_seconds": 1.6891315099783242,
+                    "time_per_query_in_seconds": 0.002984331289714354,
+                    "queries_per_second": 335.08344179030985,
                     "queries": 566,
                     "top_k": 20,
                     "backend": "elasticsearch",
@@ -94,13 +94,13 @@
                 "total_queries": 566,
                 "total_pairs": 11303,
                 "total_batches": 1131,
-                "total_input_tokens": 1686199,
-                "total_wall_time_sec": 30.5514,
-                "avg_time_query_sec": 0.0539,
-                "avg_time_batch_sec": 0.027,
-                "pairs_per_sec": 369.97,
-                "queries_per_sec": 18.53,
-                "tokens_per_sec": 55192.27,
+                "total_input_tokens": 1686188,
+                "total_wall_time_sec": 30.0516,
+                "avg_time_query_sec": 0.0531,
+                "avg_time_batch_sec": 0.0265,
+                "pairs_per_sec": 376.12,
+                "queries_per_sec": 18.83,
+                "tokens_per_sec": 56109.84,
                 "peak_gpu_memory_gb": 1.16
             }
         }
@@ -309,120 +309,125 @@
         "metrics": {
             "retrieval": {
                 "ndcg": {
-                    "NDCG@1": 0.45995,
-                    "NDCG@3": 0.37978,
-                    "NDCG@5": 0.44002,
-                    "NDCG@10": 0.49589,
-                    "NDCG@20": 0.51814
+                    "NDCG@1": 0.36042,
+                    "NDCG@3": 0.29569,
+                    "NDCG@5": 0.3477,
+                    "NDCG@10": 0.39177,
+                    "NDCG@20": 0.4429
                 },
                 "map": {
-                    "MAP@1": 0.15754,
-                    "MAP@3": 0.29378,
-                    "MAP@5": 0.34487,
-                    "MAP@10": 0.37985,
-                    "MAP@20": 0.39042
+                    "MAP@1": 0.12309,
+                    "MAP@3": 0.22114,
+                    "MAP@5": 0.2619,
+                    "MAP@10": 0.28697,
+                    "MAP@20": 0.30717
                 },
                 "recall": {
-                    "Recall@1": 0.15754,
-                    "Recall@3": 0.35277,
-                    "Recall@5": 0.45995,
-                    "Recall@10": 0.58245,
-                    "Recall@20": 0.64547
+                    "Recall@1": 0.12309,
+                    "Recall@3": 0.27503,
+                    "Recall@5": 0.36572,
+                    "Recall@10": 0.46349,
+                    "Recall@20": 0.61013
                 },
                 "p": {
-                    "P@1": 0.47173,
-                    "P@3": 0.35218,
-                    "P@5": 0.27562,
-                    "P@10": 0.17456,
-                    "P@20": 0.09673
+                    "P@1": 0.36926,
+                    "P@3": 0.27503,
+                    "P@5": 0.21943,
+                    "P@10": 0.13905,
+                    "P@20": 0.09152
                 }
             },
             "rerank": {
                 "ndcg": {
-                    "NDCG@1": 0.68433,
-                    "NDCG@3": 0.53098,
-                    "NDCG@5": 0.56894,
-                    "NDCG@10": 0.59472,
-                    "NDCG@20": 0.60904
+                    "NDCG@1": 0.67903,
+                    "NDCG@3": 0.51642,
+                    "NDCG@5": 0.5425,
+                    "NDCG@10": 0.56907,
+                    "NDCG@20": 0.58342
                 },
                 "map": {
-                    "MAP@1": 0.23233,
-                    "MAP@3": 0.44906,
-                    "MAP@5": 0.48722,
-                    "MAP@10": 0.50441,
-                    "MAP@20": 0.51052
+                    "MAP@1": 0.23145,
+                    "MAP@3": 0.43806,
+                    "MAP@5": 0.46127,
+                    "MAP@10": 0.47762,
+                    "MAP@20": 0.48435
                 },
                 "recall": {
-                    "Recall@1": 0.23233,
-                    "Recall@3": 0.48233,
-                    "Recall@5": 0.55006,
-                    "Recall@10": 0.6066,
-                    "Recall@20": 0.64547
+                    "Recall@1": 0.23145,
+                    "Recall@3": 0.4682,
+                    "Recall@5": 0.51355,
+                    "Recall@10": 0.57244,
+                    "Recall@20": 0.61013
                 },
                 "p": {
-                    "P@1": 0.69611,
-                    "P@3": 0.48174,
-                    "P@5": 0.32968,
-                    "P@10": 0.1818,
-                    "P@20": 0.09673
+                    "P@1": 0.69435,
+                    "P@3": 0.4682,
+                    "P@5": 0.30813,
+                    "P@10": 0.17173,
+                    "P@20": 0.09152
                 }
             }
         },
         "timing": {
             "index": {
                 "indexing": {
-                    "time_in_seconds": 237.97661973210052,
+                    "time_in_seconds": 253.53622881392948,
                     "documents": 50134,
-                    "docs_per_second": 210.66775406944507,
+                    "docs_per_second": 197.73899862174488,
                     "retrievers": 2,
                     "child_retrievers": [
                         {
                             "retriever": "BM25Retriever",
                             "weight": 0.3,
                             "phase": "indexing",
-                            "time_in_seconds": 25.474081170046702,
+                            "time_in_seconds": 22.936224400997162,
                             "documents": 25067,
-                            "docs_per_second": 984.0197898668329,
+                            "docs_per_second": 1092.9000153534512,
                             "details": {
-                                "time_in_seconds": 25.474081170046702,
+                                "time_in_seconds": 22.936224400997162,
                                 "documents": 25067,
-                                "docs_per_second": 984.0197898668329,
+                                "docs_per_second": 1092.9000153534512,
                                 "backend": "elasticsearch",
-                                "storage_size_bytes": 18114413,
-                                "storage_size_mb": 17.27525043487549
+                                "storage_size_bytes": 17958175,
+                                "storage_size_mb": 17.12625026702881
                             }
                         },
                         {
-                            "retriever": "DenseRetrieverSentenceBert",
+                            "retriever": "DenseRetrieverChroma",
                             "weight": 0.7,
-                            "phase": "encoding",
-                            "time_in_seconds": 212.50253856205381,
+                            "phase": "indexing",
+                            "time_in_seconds": 230.60000441293232,
                             "documents": 25067,
-                            "docs_per_second": 117.96094375917338,
+                            "docs_per_second": 108.70338040025733,
                             "details": {
-                                "time_in_seconds": 212.50253856205381,
+                                "time_in_seconds": 230.60000441293232,
+                                "collection_setup_time_in_seconds": 0.003595375921577215,
+                                "encoding_time_in_seconds": 215.50887654465623,
+                                "upsert_time_in_seconds": 15.032254717079923,
                                 "documents": 25067,
-                                "queries": 566,
-                                "shards": 1,
-                                "embedding_dim": 1024,
-                                "size_in_bytes": 105974749,
-                                "size_in_mb": 101.06539630889893,
-                                "docs_per_second": 117.96094375917338
+                                "collection_documents": 25067,
+                                "docs_per_second": 108.70338040025733,
+                                "backend": "chroma",
+                                "model": "snowflake/snowflake-arctic-embed-l-v2.0",
+                                "device": "cuda:0",
+                                "collection": "raccoon-dense-test",
+                                "upsert_batches": 6,
+                                "upsert_batch_size": 5000
                             }
                         }
                     ],
-                    "size_in_mb": 118.34064674377441
+                    "size_in_mb": 17.12625026702881
                 }
             },
             "query": {
                 "search": {
-                    "time_in_seconds": 2.0086591698927805,
-                    "retriever_time_in_seconds": 1.9990148039069027,
-                    "rrf_time_in_seconds": 0.009644365985877812,
-                    "wrapper_time_in_seconds": 0.010377645958214998,
+                    "time_in_seconds": 10.28893628413789,
+                    "retriever_time_in_seconds": 10.27906488114968,
+                    "rrf_time_in_seconds": 0.00987140298821032,
+                    "wrapper_time_in_seconds": 0.011884316802024841,
                     "execution_mode": "sequential",
-                    "time_per_query_in_seconds": 0.003548867791330001,
-                    "queries_per_second": 281.78000951262044,
+                    "time_per_query_in_seconds": 0.018178332657487438,
+                    "queries_per_second": 55.01054573275795,
                     "queries": 566,
                     "top_k": 20,
                     "retrievers": 2,
@@ -431,16 +436,16 @@
                         {
                             "retriever": "BM25Retriever",
                             "weight": 0.3,
-                            "time_in_seconds": 1.8489078419515863,
+                            "time_in_seconds": 1.6891315099783242,
                             "queries": 566,
-                            "avg_time_per_query": 0.0032666216288897284
+                            "avg_time_per_query": 0.002984331289714354
                         },
                         {
-                            "retriever": "DenseRetrieverSentenceBert",
+                            "retriever": "DenseRetrieverChroma",
                             "weight": 0.7,
-                            "time_in_seconds": 0.15010696195531636,
+                            "time_in_seconds": 8.589933371171355,
                             "queries": 566,
-                            "avg_time_per_query": 0.0002652066465641632
+                            "avg_time_per_query": 0.015176560726451158
                         }
                     ],
                     "total_results": 11320,
@@ -449,21 +454,21 @@
                     "max_results_per_query": 20,
                     "min_score": 0.008749999999999999,
                     "max_score": 0.016393442622950817,
-                    "avg_score": 0.010931400263030541
+                    "avg_score": 0.010804084846155351
                 }
             },
             "rerank": {
                 "total_queries": 566,
                 "total_pairs": 11320,
                 "total_batches": 1132,
-                "total_input_tokens": 1720501,
-                "total_wall_time_sec": 30.5197,
-                "avg_time_query_sec": 0.0539,
-                "avg_time_batch_sec": 0.0269,
-                "pairs_per_sec": 370.91,
-                "queries_per_sec": 18.55,
-                "tokens_per_sec": 56373.38,
-                "peak_gpu_memory_gb": 3.88
+                "total_input_tokens": 1201427,
+                "total_wall_time_sec": 27.677,
+                "avg_time_query_sec": 0.0489,
+                "avg_time_batch_sec": 0.0244,
+                "pairs_per_sec": 409.0,
+                "queries_per_sec": 20.45,
+                "tokens_per_sec": 43408.9,
+                "peak_gpu_memory_gb": 3.91
             }
         }
     },
@@ -518,38 +523,38 @@
             "rerank": {
                 "ndcg": {
                     "NDCG@1": 0.74499,
-                    "NDCG@3": 0.59195,
-                    "NDCG@5": 0.64771,
-                    "NDCG@10": 0.67963,
-                    "NDCG@20": 0.70451
+                    "NDCG@3": 0.59143,
+                    "NDCG@5": 0.64726,
+                    "NDCG@10": 0.6789,
+                    "NDCG@20": 0.70402
                 },
                 "map": {
                     "MAP@1": 0.25353,
-                    "MAP@3": 0.50785,
-                    "MAP@5": 0.56183,
-                    "MAP@10": 0.58532,
-                    "MAP@20": 0.5962
+                    "MAP@3": 0.50756,
+                    "MAP@5": 0.56153,
+                    "MAP@10": 0.58485,
+                    "MAP@20": 0.59589
                 },
                 "recall": {
                     "Recall@1": 0.25353,
-                    "Recall@3": 0.54653,
-                    "Recall@5": 0.64488,
-                    "Recall@10": 0.71614,
-                    "Recall@20": 0.78563
+                    "Recall@3": 0.54594,
+                    "Recall@5": 0.64429,
+                    "Recall@10": 0.71496,
+                    "Recall@20": 0.78504
                 },
                 "p": {
                     "P@1": 0.75972,
-                    "P@3": 0.54594,
-                    "P@5": 0.38657,
-                    "P@10": 0.21466,
-                    "P@20": 0.11776
+                    "P@3": 0.54535,
+                    "P@5": 0.38622,
+                    "P@10": 0.21431,
+                    "P@20": 0.11767
                 }
             }
         },
         "timing": {
             "index": {
                 "indexing": {
-                    "time_in_seconds": 394.00499123195186,
+                    "time_in_seconds": 379.854094323935,
                     "documents": 25067,
                     "concepts": 38182,
                     "sentences": 104496,
@@ -559,29 +564,29 @@
                     "concept_sentence_links": 832798,
                     "sentence_passage_links": 152776,
                     "embedding_dim": 1024,
-                    "size_in_bytes": 3098257150,
-                    "size_in_mb": 2954.7282695770264,
-                    "docs_per_second": 63.62102145361652,
+                    "size_in_bytes": 3098257130,
+                    "size_in_mb": 2954.72825050354,
+                    "docs_per_second": 65.99112757916771,
                     "cache_loaded": false,
                     "cache_path": "data/processed/rechtspraken/rechtspraken_beir_ambiguous/linear_rag_cache/snowflake-arctic-embed-l-v2.0-rechtspraken_beir_ambiguous-b4b889790b",
                     "embedding_model": "snowflake/snowflake-arctic-embed-l-v2.0",
                     "spacy_model": "nl_core_news_sm",
                     "backend": "faiss",
                     "phase_times": {
-                        "model_load_time_in_seconds": 7.763130986015312,
-                        "cache_lookup_time_in_seconds": 0.0034047920489683747,
-                        "bm25_build_time_in_seconds": 1.0294207880506292,
-                        "concept_extraction_time_in_seconds": 270.5766581289936,
-                        "embedding_build_time_in_seconds": 106.1683346600039,
-                        "cache_save_time_in_seconds": 6.499466859968379
+                        "model_load_time_in_seconds": 8.326974489958957,
+                        "cache_lookup_time_in_seconds": 0.0032956970389932394,
+                        "bm25_build_time_in_seconds": 0.9769479401875287,
+                        "concept_extraction_time_in_seconds": 257.0248843780719,
+                        "embedding_build_time_in_seconds": 105.41972288908437,
+                        "cache_save_time_in_seconds": 6.234279596013948
                     }
                 }
             },
             "query": {
                 "search": {
-                    "time_in_seconds": 171.42948387307115,
-                    "time_per_query_in_seconds": 0.3028789467722105,
-                    "queries_per_second": 3.3016490933325944,
+                    "time_in_seconds": 160.09430097602308,
+                    "time_per_query_in_seconds": 0.28285212186576514,
+                    "queries_per_second": 3.5354162924560844,
                     "queries": 566,
                     "top_k": 20,
                     "dense_candidate_k": 500,
@@ -604,13 +609,13 @@
                 "total_queries": 566,
                 "total_pairs": 11320,
                 "total_batches": 1132,
-                "total_input_tokens": 1727457,
-                "total_wall_time_sec": 30.2876,
-                "avg_time_query_sec": 0.0535,
-                "avg_time_batch_sec": 0.0267,
-                "pairs_per_sec": 373.75,
-                "queries_per_sec": 18.69,
-                "tokens_per_sec": 57035.14,
+                "total_input_tokens": 1727317,
+                "total_wall_time_sec": 29.863,
+                "avg_time_query_sec": 0.0527,
+                "avg_time_batch_sec": 0.0263,
+                "pairs_per_sec": 379.06,
+                "queries_per_sec": 18.95,
+                "tokens_per_sec": 57841.3,
                 "peak_gpu_memory_gb": 4.94
             }
         }
@@ -697,9 +702,9 @@
         "timing": {
             "index": {
                 "indexing": {
-                    "time_in_seconds": 298.35424753604457,
+                    "time_in_seconds": 289.4932911640499,
                     "documents": 25067,
-                    "docs_per_second": 84.01757376345589,
+                    "docs_per_second": 86.58922595133663,
                     "backend": "elasticsearch",
                     "model": "sparse-encoder/splade-robbert-dutch-base-v1",
                     "device": "cuda",
@@ -710,9 +715,9 @@
             },
             "query": {
                 "search": {
-                    "time_in_seconds": 8.998722885968164,
-                    "time_per_query_in_seconds": 0.01589880368545612,
-                    "queries_per_second": 62.89781418678553,
+                    "time_in_seconds": 8.317382177105173,
+                    "time_per_query_in_seconds": 0.014695021514320094,
+                    "queries_per_second": 68.0502576349081,
                     "queries": 566,
                     "top_k": 20,
                     "backend": "elasticsearch",
@@ -733,13 +738,107 @@
                 "total_pairs": 11320,
                 "total_batches": 1132,
                 "total_input_tokens": 1903053,
-                "total_wall_time_sec": 30.8534,
-                "avg_time_query_sec": 0.0545,
-                "avg_time_batch_sec": 0.0272,
-                "pairs_per_sec": 366.9,
-                "queries_per_sec": 18.34,
-                "tokens_per_sec": 61680.49,
+                "total_wall_time_sec": 30.3168,
+                "avg_time_query_sec": 0.0535,
+                "avg_time_batch_sec": 0.0267,
+                "pairs_per_sec": 373.39,
+                "queries_per_sec": 18.67,
+                "tokens_per_sec": 62772.31,
                 "peak_gpu_memory_gb": 1.76
+            }
+        }
+    },
+    "dense_chroma": {
+        "metrics": {
+            "retrieval": {},
+            "rerank": {
+                "ndcg": {
+                    "NDCG@1": 0.67903,
+                    "NDCG@3": 0.51642,
+                    "NDCG@5": 0.5425,
+                    "NDCG@10": 0.56907,
+                    "NDCG@20": 0.58342
+                },
+                "map": {
+                    "MAP@1": 0.23145,
+                    "MAP@3": 0.43806,
+                    "MAP@5": 0.46127,
+                    "MAP@10": 0.47762,
+                    "MAP@20": 0.48435
+                },
+                "recall": {
+                    "Recall@1": 0.23145,
+                    "Recall@3": 0.4682,
+                    "Recall@5": 0.51355,
+                    "Recall@10": 0.57244,
+                    "Recall@20": 0.61013
+                },
+                "p": {
+                    "P@1": 0.69435,
+                    "P@3": 0.4682,
+                    "P@5": 0.30813,
+                    "P@10": 0.17173,
+                    "P@20": 0.09152
+                }
+            }
+        },
+        "timing": {
+            "index": {
+                "indexing": {
+                    "time_in_seconds": 230.60000441293232,
+                    "collection_setup_time_in_seconds": 0.003595375921577215,
+                    "encoding_time_in_seconds": 215.50887654465623,
+                    "upsert_time_in_seconds": 15.032254717079923,
+                    "documents": 25067,
+                    "collection_documents": 25067,
+                    "docs_per_second": 108.70338040025733,
+                    "backend": "chroma",
+                    "model": "snowflake/snowflake-arctic-embed-l-v2.0",
+                    "device": "cuda:0",
+                    "collection": "raccoon-dense-test",
+                    "upsert_batches": 6,
+                    "upsert_batch_size": 5000
+                }
+            },
+            "query": {
+                "search": {
+                    "time_in_seconds": 8.589933371171355,
+                    "encoding_time_in_seconds": 7.412743172142655,
+                    "database_time_in_seconds": 1.1711402570363134,
+                    "time_per_query_in_seconds": 0.015176560726451158,
+                    "database_time_per_query_in_seconds": 0.00206915239759066,
+                    "queries_per_second": 65.8910815186938,
+                    "queries": 566,
+                    "top_k": 20,
+                    "backend": "chroma",
+                    "model": "snowflake/snowflake-arctic-embed-l-v2.0",
+                    "device": "cuda:0",
+                    "collection": "raccoon-dense-test",
+                    "collection_documents": 25067,
+                    "database_requests": 566,
+                    "query_batch_size": 1,
+                    "total_results": 11320,
+                    "avg_results_per_query": 20.0,
+                    "min_results_per_query": 20,
+                    "max_results_per_query": 20,
+                    "min_score": 0.30241379999999995,
+                    "max_score": 0.972328067,
+                    "avg_score": 0.6038036563950531,
+                    "score_function": "cosine"
+                }
+            },
+            "rerank": {
+                "total_queries": 566,
+                "total_pairs": 11320,
+                "total_batches": 1132,
+                "total_input_tokens": 1201427,
+                "total_wall_time_sec": 27.6623,
+                "avg_time_query_sec": 0.0488,
+                "avg_time_batch_sec": 0.0244,
+                "pairs_per_sec": 409.22,
+                "queries_per_sec": 20.46,
+                "tokens_per_sec": 43431.98,
+                "peak_gpu_memory_gb": 3.91
             }
         }
     }
