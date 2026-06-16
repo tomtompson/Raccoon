@@ -13,7 +13,7 @@ product. Runnable workflows live in `examples/`; pytest tests live in `test/`.
 - Document loaders for local files and SQL tables.
 - Synthetic BEIR dataset generation with Ollama prompts.
 - BM25 retrieval through Elasticsearch.
-- Dense retrieval with SentenceTransformers.
+- Dense retrieval with SentenceTransformers, either in-process or through Chroma.
 - Hybrid retrieval with reciprocal rank fusion.
 - LinearRAG retrieval with dense, BM25, graph, and concept signals.
 - Optional transformer reranking.
@@ -50,6 +50,7 @@ For a smaller install, pick only the extras you need:
 | `synthesis` | Synthetic BEIR dataset generation. |
 | `bm25` | Elasticsearch BM25 retrieval. |
 | `dense` | SentenceTransformer dense retrieval. |
+| `chroma` | Chroma-backed dense retrieval. |
 | `linear` | LinearRAG retrieval. |
 | `rerank` | Transformer reranking. |
 | `report` | Static PDF report generation. |
@@ -76,6 +77,8 @@ Different workflows need different services and models:
 
 - BM25 examples need Elasticsearch. The example scripts use Docker through
   `testcontainers`, or you can pass an external Elasticsearch URL where supported.
+- Chroma dense retrieval needs a Chroma server. `examples/retrieverchroma.py` uses
+  Docker through `testcontainers`, or you can pass an existing Chroma host and port.
 - Dataset synthesis needs Ollama running locally, usually at `http://localhost:11434`,
   with the configured models pulled, for example `ollama pull qwen3:8b`.
 - Dense retrieval and reranking download Hugging Face models.
@@ -207,6 +210,28 @@ results = retriever.search(
 )
 ```
 
+### Run Chroma-Backed Dense Retrieval
+
+```python
+from raccoon.custom_retriever import DenseRetrieverChroma
+
+retriever = DenseRetrieverChroma(
+    chroma_host="localhost",
+    chroma_port=8000,
+    collection_name="raccoon-dense",
+    corpus=corpus,
+    queries=queries,
+    model_id="snowflake/snowflake-arctic-embed-l-v2.0",
+    normalize_embeddings=True,
+    topk=20,
+)
+
+retriever.index_corpus()
+results = retriever.search()
+```
+
+Use `reset_collection=True` when the collection should be recreated before indexing.
+
 ### Run BM25 Retrieval
 
 ```python
@@ -294,6 +319,90 @@ StaticRetrieverReport().generate_report(
     output_path="reports/retriever_benchmark.pdf",
 )
 ```
+
+## Repository Layout
+
+- `raccoon/`: library code.
+- `examples/`: runnable workflows and integration examples.
+- `test/`: pytest tests.
+- `prompts/`: prompt templates for synthesis and validation.
+- `data/`: local raw and processed data used by the examples.
+- `reports/`: generated report outputs.
+
+## Examples
+
+The scripts in `examples/` are useful workflow examples, but most are integration scripts
+with local assumptions. Make sure you adjust them accordingly.
+
+- `examples/document.py`: chunks documents from `data/raw/rechtspraak`.
+- `examples/sql.py`: loads documents from a SQL table and chunks them.
+- `examples/synthesizer.py`: generates a synthetic BEIR dataset with Ollama.
+- `examples/retrieverbm25.py`: evaluates BM25 through an Elasticsearch testcontainer.
+- `examples/retrieverdense.py`: evaluates dense retrieval and writes embeddings.
+- `examples/retrieverchroma.py`: evaluates dense retrieval through a Chroma testcontainer.
+- `examples/retrieverlinear.py`: evaluates LinearRAG.
+- `examples/report.py`: runs BM25 and generates a report.
+- `examples/test-report.py`: generates a report from fake retriever objects.
+- `examples/query_scenario_benchmark.py`: orchestrates synthesis, retriever runs, metrics,
+  and report generation for prompt scenario benchmarking.
+- `examples/end-to-end.py`: runs the complete benchmark workflow from raw documents to
+  synthetic data, retriever evaluation, stored metrics, and a PDF report.
+
+Run a script from the repo root, for example:
+
+```bash
+python examples/document.py
+```
+
+For scripts that use external systems, confirm the required data, Docker daemon, Ollama
+models, Hugging Face access, or database credentials first.
+
+## Full Benchmark Workflow
+
+`examples/end-to-end.py` shows the complete workflow used for a retrieval benchmark:
+
+1. Load raw documents from `data/raw/rechtspraak`.
+2. Chunk the documents into parent and child chunks under `data/processed/chunks_600`.
+3. Use `OllamaSynthesizer` and the Rechtspraak prompt templates to generate a synthetic
+   BEIR-style dataset under `data/processed/rechtspraken/beir_600_semantic`.
+4. Load the generated `corpus.jsonl`, `queries.jsonl`, and `qrels/test.tsv`.
+5. Generate a short Dutch dataset description with Ollama for the final report.
+6. Initialize a transformer reranker with `BAAI/bge-reranker-v2-m3`.
+7. Run BM25 with an Elasticsearch testcontainer.
+8. Run Chroma-backed dense retrieval with `snowflake/snowflake-arctic-embed-l-v2.0`.
+9. Run hybrid retrieval by fusing BM25 and dense results with reciprocal rank fusion.
+10. Run LinearRAG with dense, BM25, graph, and concept-based signals; its cache is stored
+    under `data/processed/rechtspraken/beir_600_semantic/linear_rag_cache`.
+11. Evaluate each retriever with BEIR `EvaluateRetrieval` for the configured `k` values.
+12. Evaluate the reranked results separately for each retriever.
+13. Append every retriever's retrieval metrics, runtime metrics, and rerank timings to
+    `data/processed/rechtspraken/beir_600_semantic/eval_results.json`.
+14. Add each retriever object to the `RETRIEVERS` list.
+15. Generate a Dutch PDF report at `data/processed/report_graph.pdf` with the dataset
+    description, qrels, comparison metrics, runtime trade-offs, rerank sections, samples,
+    and exported query graph pages when available.
+
+Run the full workflow with:
+
+```bash
+python examples/end-to-end.py
+```
+Again this workflow has local assumptions. It requires local raw data, Ollama with the
+configured models, Docker for Elasticsearch and Chroma, Hugging Face model downloads, and
+spaCy model.
+
+## Dataset Inspector CLI
+
+`cli/cli.py` inspects generated synthetic datasets that include `qrels_debug.jsonl`:
+
+```bash
+python cli/cli.py data/processed/rechtspraken/beir_realistic_TEST --summary
+python cli/cli.py data/processed/rechtspraken/beir_realistic_TEST --query q1
+python cli/cli.py data/processed/rechtspraken
+```
+
+The interactive mode lets you list queries, inspect qrels/debug judgments, and copy a
+query bundle when a clipboard backend is available.
 
 ## Class And Config Reference
 
@@ -460,6 +569,42 @@ Constructor arguments:
 | `corpus_filename` | Corpus shard filename pattern. |
 | `use_faiss` | Use FAISS instead of chunked PyTorch scoring. |
 
+### `DenseRetrieverChroma`
+
+Embeds queries and documents with SentenceTransformers, stores document embeddings in a
+Chroma collection, and searches Chroma with cosine distance.
+
+Constructor arguments:
+
+| Argument | Why pass it |
+| --- | --- |
+| `model_id` | Required SentenceTransformers/Hugging Face model id. Stored in collection metadata for compatibility checks. |
+| `collection_name` | Required Chroma collection name. |
+| `chroma_host` | Chroma server host. Defaults to `localhost`. |
+| `chroma_port` | Chroma server port. Defaults to `8000`. |
+| `chroma_ssl` | Use HTTPS when connecting to Chroma. |
+| `chroma_headers` | Optional headers for authenticated Chroma deployments. |
+| `tenant`, `database` | Chroma tenant and database names. |
+| `corpus`, `queries` | Data to index and search. |
+| `reranker` | Optional reranker for retrieved results. |
+| `max_length` | Sets model max sequence length. |
+| `device` | `cpu`, `cuda`, or other torch device. |
+| `query_prompt_name` | Prompt name used for query encoding when the model supports prompts. |
+| `passage_prompt_name` | Prompt name used for document encoding. |
+| `normalize_embeddings` | Normalize embeddings at encode time. |
+| `topk` | Default result count. |
+| `batch_size` | SentenceTransformer encoding batch size. |
+| `upsert_batch_size` | Maximum Chroma upsert batch size. It is capped by the Chroma client limit when available. |
+| `query_batch_size` | Number of queries sent to Chroma per request. |
+| `show_progress_bar` | Show model encoding progress. |
+| `reset_collection` | Delete and recreate the collection before the first index setup. |
+| `chroma_client` | Optional prebuilt Chroma client, mostly useful for tests or custom clients. |
+| `sentence_model` | Optional prebuilt SentenceTransformer-compatible model, mostly useful for tests. |
+
+Important methods: `create_index()`, `index_corpus(corpus=None)`, and
+`search(top_k=None, queries=None)`. `search()` auto-indexes when a corpus is available;
+without a corpus it can query an existing non-empty Chroma collection.
+
 ### `HybridRetriever`
 
 Combines rankings from child retrievers or precomputed result dictionaries with reciprocal
@@ -572,90 +717,6 @@ After BEIR evaluation, call `retriever.add_retrieval_result(eval_results)` for b
 results and `retriever.add_rerank_retrieval_result(eval_results)` for reranked results so
 the report can read the metrics.
 
-## Repository Layout
-
-- `raccoon/`: library code.
-- `examples/`: runnable workflows and integration examples.
-- `test/`: pytest tests.
-- `prompts/`: prompt templates for synthesis and validation.
-- `data/`: local raw and processed data used by the examples.
-- `reports/`: generated report outputs.
-
-## Examples
-
-The scripts in `examples/` are useful workflow examples, but most are integration scripts
-with local assumptions. Make sure you adjust them accordingly.
-
-- `examples/document.py`: chunks documents from `data/raw/rechtspraak`.
-- `examples/sql.py`: loads documents from a SQL table and chunks them.
-- `examples/synthesizer.py`: generates a synthetic BEIR dataset with Ollama.
-- `examples/retrieverbm25.py`: evaluates BM25 through an Elasticsearch testcontainer.
-- `examples/retrieverdense.py`: evaluates dense retrieval and writes embeddings.
-- `examples/retrieverlinear.py`: evaluates LinearRAG.
-- `examples/report.py`: runs BM25 and generates a report.
-- `examples/test-report.py`: generates a report from fake retriever objects.
-- `examples/query_scenario_benchmark.py`: orchestrates synthesis, retriever runs, metrics,
-  and report generation for prompt scenario benchmarking.
-- `examples/end-to-end.py`: runs the complete benchmark workflow from raw documents to
-  synthetic data, retriever evaluation, stored metrics, and a PDF report.
-
-Run a script from the repo root, for example:
-
-```bash
-python examples/document.py
-```
-
-For scripts that use external systems, confirm the required data, Docker daemon, Ollama
-models, Hugging Face access, or database credentials first.
-
-## Full Benchmark Workflow
-
-`examples/end-to-end.py` shows the complete workflow used for a retrieval benchmark:
-
-1. Load raw documents from `data/raw/rechtspraak`.
-2. Chunk the documents into parent and child chunks under `data/processed/chunks_600`.
-3. Use `OllamaSynthesizer` and the Rechtspraak prompt templates to generate a synthetic
-   BEIR-style dataset under `data/processed/rechtspraken/beir_600_semantic`.
-4. Load the generated `corpus.jsonl`, `queries.jsonl`, and `qrels/test.tsv`.
-5. Generate a short Dutch dataset description with Ollama for the final report.
-6. Initialize a transformer reranker with `BAAI/bge-reranker-v2-m3`.
-7. Run BM25 with an Elasticsearch testcontainer.
-8. Run dense retrieval with `snowflake/snowflake-arctic-embed-l-v2.0`; embeddings are
-   cached under `data/processed/rechtspraken/beir_600_semantic/encode/`.
-9. Run hybrid retrieval by fusing BM25 and dense results with reciprocal rank fusion.
-10. Run LinearRAG with dense, BM25, graph, and concept-based signals; its cache is stored
-    under `data/processed/rechtspraken/beir_600_semantic/linear_rag_cache`.
-11. Evaluate each retriever with BEIR `EvaluateRetrieval` for the configured `k` values.
-12. Evaluate the reranked results separately for each retriever.
-13. Append every retriever's retrieval metrics, runtime metrics, and rerank timings to
-    `data/processed/rechtspraken/beir_600_semantic/eval_results.json`.
-14. Add each retriever object to the `RETRIEVERS` list.
-15. Generate a Dutch PDF report at `data/processed/report_graph.pdf` with the dataset
-    description, qrels, comparison metrics, runtime trade-offs, rerank sections, samples,
-    and exported query graph pages when available.
-
-Run the full workflow with:
-
-```bash
-python examples/end-to-end.py
-```
-Again this workflow has local assumptions. It requires local raw data, Ollama with the
-configured models, Docker for Elasticsearch, Hugging Face model downloads, and spaCy model.
-
-## Dataset Inspector CLI
-
-`cli/cli.py` inspects generated synthetic datasets that include `qrels_debug.jsonl`:
-
-```bash
-python cli/cli.py data/processed/rechtspraken/beir_realistic_TEST --summary
-python cli/cli.py data/processed/rechtspraken/beir_realistic_TEST --query q1
-python cli/cli.py data/processed/rechtspraken
-```
-
-The interactive mode lets you list queries, inspect qrels/debug judgments, and copy a
-query bundle when a clipboard backend is available.
-
-
 ## Library Readiness Notes
 
 The package is usable for local experiments, but keep these points in mind when using it
@@ -666,6 +727,6 @@ as a library:
 - Keep `pyproject.toml` as the source of truth for dependencies. `requirements.txt`
   delegates to an editable install of the project.
 - Keep runnable workflows in `examples/` and true unit tests in `test/test_*.py`.
-- BM25, synthesis, dense retrieval, reranking, and LinearRAG each have heavyweight
+- BM25, synthesis, dense retrieval, Chroma, reranking, and LinearRAG each have heavyweight
   runtime requirements. Document those requirements in any downstream project that uses
   this package.
