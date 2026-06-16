@@ -514,8 +514,9 @@ class StaticRetrieverReport:
                 story += [
                     PageBreak(),
                     Paragraph("Quality versus Query Throughput", styles["Subsection"]),
-                    self._quality_speed_chart(quality_speed_values),
                 ]
+                story += self._quallity_speed_legend(quality_speed_values, styles)
+                story += [self._quality_speed_chart(quality_speed_values)]
             
                 story += [Paragraph(self.text_class.throughput_text, styles["Note"]), Spacer(1, 8)]
                 story += [Paragraph(self.text_class.throughput_interpretation_text, styles["Note"]), Spacer(1, 8)]
@@ -712,6 +713,73 @@ class StaticRetrieverReport:
                 values.append((row["name"], qps, recall))
 
         return values
+    
+
+    def _quallity_speed_legend(
+            self,
+            values: list[tuple[str, float, float]],
+            styles
+        ) -> list[Any]:
+        palette = [
+            colors.HexColor("#2563EB"),  # blue
+            colors.HexColor("#059669"),  # green
+            colors.HexColor("#D97706"),  # amber
+            colors.HexColor("#7C3AED"),  # purple
+            colors.HexColor("#DC2626"),  # red
+            colors.HexColor("#0891B2"),  # cyan
+            colors.HexColor("#DB2777"),  # pink
+            colors.HexColor("#65A30D"),  # lime
+            colors.HexColor("#EA580C"),  # orange
+            colors.HexColor("#4F46E5"),  # indigo
+            colors.HexColor("#0F766E"),  # teal
+            colors.HexColor("#9333EA"),  # violet
+            colors.HexColor("#BE123C"),  # rose
+            colors.HexColor("#475569"),  # slate
+        ]
+
+        rows = [
+            [Paragraph("Series", styles["HeaderCell"])]
+        ]
+
+        for index, (name, qps, recall) in enumerate(values):
+            rows.append([
+                Paragraph(self._esc(name), styles["Cell"])
+            ])
+
+        table = Table(
+            rows,
+            colWidths=[50 * mm],
+            hAlign="LEFT",
+        )
+
+        table_style = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]
+
+        for index, (name, qps, recall) in enumerate(values):
+            row_index = index + 1  # +1 because row 0 is the header
+            color = palette[index % len(palette)]
+
+            table_style.extend([
+                ("BACKGROUND", (0, row_index), (0, row_index), color),
+                ("TEXTCOLOR", (0, row_index), (0, row_index), colors.white),
+            ])
+
+        table.setStyle(TableStyle(table_style))
+
+        return [
+            Paragraph("Chart Colors", styles["Subsection"]),
+            table,
+            Spacer(1, 8),
+        ]
 
     def _quality_speed_chart(self, values: list[tuple[str, float, float]]) -> Drawing:
         width = 100 * mm
@@ -783,14 +851,22 @@ class StaticRetrieverReport:
                 )
             )
 
-        palette = [
-            colors.HexColor("#2563EB"),
-            colors.HexColor("#059669"),
-            colors.HexColor("#D97706"),
-            colors.HexColor("#7C3AED"),
-            colors.HexColor("#DC2626"),
-            colors.HexColor("#0891B2"),
-        ]
+            palette = [
+                colors.HexColor("#2563EB"),  # blue
+                colors.HexColor("#059669"),  # green
+                colors.HexColor("#D97706"),  # amber
+                colors.HexColor("#7C3AED"),  # purple
+                colors.HexColor("#DC2626"),  # red
+                colors.HexColor("#0891B2"),  # cyan
+                colors.HexColor("#DB2777"),  # pink
+                colors.HexColor("#65A30D"),  # lime
+                colors.HexColor("#EA580C"),  # orange
+                colors.HexColor("#4F46E5"),  # indigo
+                colors.HexColor("#0F766E"),  # teal
+                colors.HexColor("#9333EA"),  # violet
+                colors.HexColor("#BE123C"),  # rose
+                colors.HexColor("#475569"),  # slate
+            ]
 
         for index, (name, qps, recall) in enumerate(values):
             x = left + plot_width * (qps / x_axis_max) 
@@ -804,16 +880,6 @@ class StaticRetrieverReport:
                     4,
                     fillColor=palette[index % len(palette)],
                     strokeColor=None,
-                )
-            )
-            drawing.add(
-                String(
-                    x + 4,
-                    y - 2,
-                    name,
-                    fontSize=6,
-                    fillColor=colors.HexColor("#111827"),
-                    fontName="Helvetica-Bold",
                 )
             )
 
